@@ -16,7 +16,8 @@ contract Lock {
             switch gt(timestamp, sload(0x01))
             case 0 { revert(0, 0) }
             case 1 {
-                let success := call(gas, sload(0x00), balance(address), 0, 0, 0, 0)
+                switch call(gas, sload(0x00), balance(address), 0, 0, 0, 0)
+                case 0 { revert(0, 0) }
             }
         }
     }
@@ -32,7 +33,7 @@ contract Lockdrop {
     uint256 constant public LOCK_DROP_PERIOD = 1 days * 14; // two weeks
     uint256 public LOCK_START_TIME;
     
-    event Locked(address indexed owner, uint256 val, Lock lockAddr, Term term, bytes edgewareKey, bool isValidator);
+    event Locked(address indexed owner, uint256 eth, Lock lockAddr, Term term, bytes edgewareKey, bool isValidator);
     
     constructor(uint startTime) public {
         LOCK_START_TIME = startTime;
@@ -42,15 +43,15 @@ contract Lockdrop {
         require(now >= LOCK_START_TIME);
         require(now <= LOCK_START_TIME + LOCK_DROP_PERIOD);
 
-        uint256 val = msg.value;
+        uint256 eth = msg.value;
         address owner = msg.sender;
         uint256 unlockTime = unlockTimeForTerm(term);
         
-        Lock lockAddr = (new Lock).value(msg.value)(owner, unlockTime);
-        assert(address(lockAddr).balance == msg.value);
+        Lock lockAddr = (new Lock).value(eth)(owner, unlockTime);
+        assert(address(lockAddr).balance == msg.value); // ensure lock contract has all ETH, or fail
         assert(address(this).balance == 0); // ensure contract has no ETH, or fail
         
-        emit Locked(owner, val, lockAddr, term, edgewareKey, isValidator);
+        emit Locked(owner, eth, lockAddr, term, edgewareKey, isValidator);
     }
     
     function unlockTimeForTerm(Term term) internal view returns (uint256) {

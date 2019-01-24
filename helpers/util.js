@@ -82,7 +82,7 @@ async function assertRevert(promise, invariants = () => {}) {
     await promise;
     assert.fail('Expected revert not received');
   } catch (error) {
-    const revertFound = error.message.search('revert') >= 0;
+    const revertFound = error.message.search('revert') >= 0 || error.message.search('invalid opcode');
     assert(revertFound, `Expected 'revert', got ${error} instead`);
     invariants.call()
   }

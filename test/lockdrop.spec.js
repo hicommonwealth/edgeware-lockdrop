@@ -35,6 +35,7 @@ contract('Lockdrop', (accounts) => {
 
     const lockEvents = await ldHelpers.getLocks(lockdrop, accounts[1]);
     assert.equal(lockEvents.length, 1);
+    assert.equal(lockEvents[0].args.isValidator, true);
 
     const lockStorages = await Promise.all(lockEvents.map(event => {
       return ldHelpers.getLockStorage(event.returnValues.lockAddr);
@@ -72,5 +73,61 @@ contract('Lockdrop', (accounts) => {
     const afterafter = await utility.getBalance(accounts[1]);
     assert.ok(balBefore > balAfter);
     assert.ok(afterafter > balAfter);
+  });
+
+  it('should not allow one to lock before the lock start time', async function () {
+    let time = await utility.getCurrentTimestamp();
+    const newLockdrop = await Lockdrop.new(time + SECONDS_IN_DAY * 10);
+    utility.assertRevert(newLockdrop.lock(THREE_MONTHS, accounts[1], true, {
+      from: accounts[1],
+      value: web3.utils.toWei('1', 'ether'),
+    }));
+  });
+
+  it('should not allow one to lock after the lock start time', async function () {
+    await lockdrop.lock(THREE_MONTHS, accounts[1], true, {
+      from: accounts[1],
+      value: web3.utils.toWei('1', 'ether'),
+    });
+
+    utility.advanceTime(SECONDS_IN_DAY * 15);
+    utility.assertRevert(lockdrop.lock(THREE_MONTHS, accounts[1], true, {
+      from: accounts[1],
+      value: web3.utils.toWei('1', 'ether'),
+    }));
+  });
+
+  it('should not allow one to lock up any different length than 3,6,12 months', async function () {
+    utility.assertRevert(lockdrop.lock(3, accounts[1], true, {
+      from: accounts[1],
+      value: web3.utils.toWei('1', 'ether'),
+    }));
+  });
+
+  it('should fail to withdraw funds if not enough gas is sent', async function () {
+    let time = await utility.getCurrentTimestamp();
+    const newLockdrop = await Lockdrop.new(time);
+    await newLockdrop.lock(THREE_MONTHS, accounts[1], true, {
+      from: accounts[1],
+      value: web3.utils.toWei('1', 'ether'),
+    });
+
+    const balAfter = await utility.getBalance(accounts[1]);
+
+    const lockEvents = await ldHelpers.getLocks(newLockdrop, accounts[1]);
+    const lockStorages = await Promise.all(lockEvents.map(event => {
+      return ldHelpers.getLockStorage(event.returnValues.lockAddr);
+    }));
+    let unlockTime = lockStorages[0].unlockTime;
+    const lockContract = await Lock.at(lockEvents[0].returnValues.lockAddr);
+
+    time = await utility.getCurrentTimestamp();
+    await utility.advanceTime(unlockTime - time + SECONDS_IN_DAY);
+
+    utility.assertRevert(lockContract.sendTransaction({
+      from: accounts[1],
+      value: 0,
+      gas: 1,
+    }));
   });
 });
