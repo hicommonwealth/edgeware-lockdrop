@@ -1,18 +1,76 @@
-import { getCurrentTimestamp, advanceTimeAndBlock } from '../../helpers/evmTime.js';
-import assertRevert from '../../helpers/assertRevert.js';
-import getLockDropDeposits from "../../helpers/lockDropLogParser.js";
+const Promise = require('bluebird');
+const utility = require('../helpers/util');
+const ldHelpers = require('../helpers/lockdropHelper');
 const { toWei, toBN, padRight } = web3.utils;
 
 const Lock = artifacts.require("./Lock.sol");
 const Lockdrop = artifacts.require("./Lockdrop.sol");
 
 contract('Lockdrop', (accounts) => {
-  const secondsInDay = 86400;
-  let lockDrop;
-  let tokenPrice;
-  let tokenCapacity;
+  const SECONDS_IN_DAY = 86400;
+  const THREE_MONTHS = 0;
+  const SIX_MONTHS = 1;
+  const TWELVE_MONTHS = 2;
 
-  before(async function() {
-    lockdrop = new Lockdrop();
+  let lockdrop;
+
+  beforeEach(async function() {
+    let time = await utility.getCurrentTimestamp();
+    lockdrop = await Lockdrop.new(time);
+  });
+
+  it('should setup and pull constants', async function () {
+    let time = await utility.getCurrentTimestamp();
+    let LOCK_DROP_PERIOD = (await lockdrop.LOCK_DROP_PERIOD()).toNumber();
+    let LOCK_START_TIME = (await lockdrop.LOCK_START_TIME()).toNumber();
+    assert.equal(LOCK_DROP_PERIOD, SECONDS_IN_DAY * 14);
+    assert.ok(LOCK_START_TIME <= time && time <= LOCK_START_TIME + 1000);
+  });
+
+  it('should lock funds and also be a potential validator', async function () {
+    await lockdrop.lock(THREE_MONTHS, accounts[1], true, {
+      from: accounts[1],
+      value: 1,
+    });
+
+    const lockEvents = await ldHelpers.getLocks(lockdrop, accounts[1]);
+    assert.equal(lockEvents.length, 1);
+
+    const lockStorages = await Promise.all(lockEvents.map(event => {
+      return ldHelpers.getLockStorage(event.returnValues.lockAddr);
+    }));
+
+    assert.equal(lockStorages[0].owner, lockEvents[0].returnValues.owner.toLowerCase());
+  });
+
+  it('should unlock the funds after the lock period has ended', async function () {
+    const balBefore = await utility.getBalance(accounts[1]);
+    let txHash = await lockdrop.lock(THREE_MONTHS, accounts[1], true, {
+      from: accounts[1],
+      value: web3.utils.toWei('1', 'ether'),
+    });
+
+    const balAfter = await utility.getBalance(accounts[1]);
+
+    const lockEvents = await ldHelpers.getLocks(lockdrop, accounts[1]);
+    const lockStorages = await Promise.all(lockEvents.map(event => {
+      return ldHelpers.getLockStorage(event.returnValues.lockAddr);
+    }));
+    let unlockTime = lockStorages[0].unlockTime;
+
+    const lockContract = await Lock.at(lockEvents[0].returnValues.lockAddr);
+
+    let time = await utility.getCurrentTimestamp();
+    let res = await utility.advanceTime(unlockTime - time + SECONDS_IN_DAY);
+
+    txHash = await lockContract.sendTransaction({
+      from: accounts[1],
+      value: 0,
+      gas: 50000,
+    });
+
+    const afterafter = await utility.getBalance(accounts[1]);
+    assert.ok(balBefore > balAfter);
+    assert.ok(afterafter > balAfter);
   });
 });
