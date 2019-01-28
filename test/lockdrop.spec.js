@@ -33,7 +33,7 @@ contract('Lockdrop', (accounts) => {
       value: 1,
     });
 
-    const lockEvents = await ldHelpers.getLocks(lockdrop, accounts[1]);
+    const lockEvents = await ldHelpers.getLocksForAddress(lockdrop, accounts[1]);
     assert.equal(lockEvents.length, 1);
     assert.equal(lockEvents[0].args.isValidator, true);
 
@@ -53,7 +53,7 @@ contract('Lockdrop', (accounts) => {
 
     const balAfter = await utility.getBalance(accounts[1]);
 
-    const lockEvents = await ldHelpers.getLocks(lockdrop, accounts[1]);
+    const lockEvents = await ldHelpers.getLocksForAddress(lockdrop, accounts[1]);
     const lockStorages = await Promise.all(lockEvents.map(event => {
       return ldHelpers.getLockStorage(event.returnValues.lockAddr);
     }));
@@ -114,7 +114,7 @@ contract('Lockdrop', (accounts) => {
 
     const balAfter = await utility.getBalance(accounts[1]);
 
-    const lockEvents = await ldHelpers.getLocks(newLockdrop, accounts[1]);
+    const lockEvents = await ldHelpers.getLocksForAddress(newLockdrop, accounts[1]);
     const lockStorages = await Promise.all(lockEvents.map(event => {
       return ldHelpers.getLockStorage(event.returnValues.lockAddr);
     }));
@@ -129,5 +129,76 @@ contract('Lockdrop', (accounts) => {
       value: 0,
       gas: 1,
     }));
+  });
+
+  it('should generate the allocation for a substrate genesis spec with THREE_MONTHS term', async function () {
+    await Promise.all(accounts.map(async a => {
+      return await lockdrop.lock(THREE_MONTHS, a, true, {
+        from: a,
+        value: web3.utils.toWei('1', 'ether'),
+      });
+    }));
+
+    const totalAllocation = '5000000000000000000000000000';
+    const allocation = await ldHelpers.calculateEffectiveLocks(lockdrop, totalAllocation);
+    let { validatingLocks, unvalidatingLocks } = allocation;
+
+    for (key in validatingLocks) {
+      assert.equal(validatingLocks[key].edgewareBalance, toBN(totalAllocation).div(toBN(accounts.length)).toString());
+    }
+  });
+
+  it('should generate the allocation for a substrate genesis spec with SIX_MONTHS term', async function () {
+    await Promise.all(accounts.map(async a => {
+      return await lockdrop.lock(SIX_MONTHS, a, true, {
+        from: a,
+        value: web3.utils.toWei('1', 'ether'),
+      });
+    }));
+
+    const totalAllocation = '5000000000000000000000000000';
+    const allocation = await ldHelpers.calculateEffectiveLocks(lockdrop, totalAllocation);
+    let { validatingLocks, unvalidatingLocks } = allocation;
+
+    for (key in validatingLocks) {
+      assert.equal(validatingLocks[key].edgewareBalance, '499999999800000000000000000');
+    }
+  });
+
+  it('should generate the allocation for a substrate genesis spec with TWELVE_MONTHS term', async function () {
+    await Promise.all(accounts.map(async a => {
+      return await lockdrop.lock(TWELVE_MONTHS, a, true, {
+        from: a,
+        value: web3.utils.toWei('1', 'ether'),
+      });
+    }));
+
+    const totalAllocation = '5000000000000000000000000000';
+    const allocation = await ldHelpers.calculateEffectiveLocks(lockdrop, totalAllocation);
+    let { validatingLocks, unvalidatingLocks } = allocation;
+
+    for (key in validatingLocks) {
+      assert.equal(validatingLocks[key].edgewareBalance, '499999999800000000000000000');
+    }
+  });
+
+  it('should aggregate the balances for all non validators and separate for validators', async function () {
+    await Promise.all(accounts.map(async a => {
+      return await lockdrop.lock(TWELVE_MONTHS, accounts[1], false, {
+        from: accounts[1],
+        value: web3.utils.toWei('1', 'ether'),
+      });
+    }));
+
+    await lockdrop.lock(TWELVE_MONTHS, accounts[1], true, {
+      from: accounts[1],
+      value: web3.utils.toWei('1', 'ether'),
+    });
+
+    const totalAllocation = '5000000000000000000000000000';
+    const allocation = await ldHelpers.calculateEffectiveLocks(lockdrop, totalAllocation);
+    let { validatingLocks, unvalidatingLocks } = allocation;
+    assert.equal(Object.keys(validatingLocks).length, 1);
+    assert.equal(Object.keys(unvalidatingLocks).length, 1);
   });
 });

@@ -1,15 +1,17 @@
 require('dotenv').config();
 const program = require('commander');
 const Web3 = require('web3');
+const EthereumTx = require('ethereumjs-tx')
 const fs = require('fs');
-const getLockdropDeposits = require("../helpers/lockdropHelper.js");
+const ldHelpers = require("../helpers/lockdropHelper.js");
 
-const LOCKDROP_TESTNET_ADDRESS = "";
+const LOCKDROP_TESTNET_ADDRESS = "0xfEdf8Cada80F6311d193cB8460A7b2766BdC9459";
 const LOCKDROP_JSON = JSON.parse(fs.readFileSync('./build/contracts/Lockdrop.json').toString());
 const ETH_PRIVATE_KEY = process.env.ETH_PRIVATE_KEY;
+const ETH_ADDRESS = process.env.ETH_ADDRESS;
 
-const web3 = new Web3(new Web3.providers.HttpProvider("http://localhost:9545"));
-const contract = new web3.eth.Contract(Lockdrop_JSON.abi, Lockdrop_TESTNET_ADDRESS);
+const web3 = new Web3(new Web3.providers.HttpProvider("http://localhost:8545"));
+const contract = new web3.eth.Contract(LOCKDROP_JSON.abi, LOCKDROP_TESTNET_ADDRESS);
 
 program
   .version('0.1.0')
@@ -18,10 +20,10 @@ program
   .option('-d, --deposit', 'deposit')
   .option('-w, --withdraw', 'withdraw')
   .option('--ending', 'ending')
-  .option('--lockLength', 'lockLength')
-  .option('--lockValue', 'lockValue')
-  .option('--pubKey', 'pubKey')
-  .option('--lockIndex', 'lockIndex')
+  .option('--lockLength <length>', 'lockLength')
+  .option('--lockValue <value>', 'lockValue')
+  .option('--pubKey <key>', 'pubKey')
+  .option('--isValidator', 'isValidator')
   .parse(process.argv);
 
 async function getCurrentTimestamp() {
@@ -29,75 +31,77 @@ async function getCurrentTimestamp() {
   return block.timestamp;
 }
 
-async function getFormattedLockdropLockers() {
+async function getLockdropLocks() {
   console.log('Fetching Lockdrop locked deposits...');
   console.log("");
-  const [_, genesisConfigBalances] = await getLockdropDeposits(contract);
-  console.log(genesisConfigBalances);
+  const allocation = await ldHelpers.calculateEffectiveLocks(contract, '5000000000000000000000000000');
+  console.log(allocation);
+  return allocation;
 };
 
-async function depositIntoLockdrop(length, value, pubKey, isValidator) {
+async function lock(length, value, pubKey, isValidator=false) {
     console.log(`Depositing ${value} into Lockdrop contract for ${length} days. Receiver: ${pubKey}`);
     console.log("");
-    const coinbase = await web3.eth.getCoinbase();
-    const data = contract.methods.lock(length, pubKey, isValidator).encodeABI();
-    const tx = await web3.eth.sendTransaction({
-      from: coinbase,
-      to: Lockdrop_TESTNET_ADDRESS,
+    let txNonce = await web3.eth.getTransactionCount(ETH_ADDRESS);
+    const tx = new EthereumTx({
+      nonce: txNonce,
+      from: ETH_ADDRESS,
+      to: LOCKDROP_TESTNET_ADDRESS,
       gas: 150000,
+      data: contract.methods.lock(length, pubKey, isValidator).encodeABI(),
       value,
-      data
     });
-    console.log(`Transaction send: ${tx.transactionHash}`);
+
+    tx.sign(Buffer.from(ETH_PRIVATE_KEY, 'hex'));
+    var raw = '0x' + tx.serialize().toString('hex');
+    const txHash = await web3.eth.sendSignedTransaction(raw);
+    console.log(`Transaction send: ${txHash}`);
 }
 
-async function withdrawDeposit(lockAddress) {
-  const coinbase = await web3.eth.getCoinbase();
+async function withdraw(lockContractAddress) {
   console.log(`Withdrawing deposit for account: ${coinbase}`);
   console.log("");
-  const data = contract.methods.withdraw().encodeABI();
   try {
-    const tx = await web3.eth.sendTransaction({
-      from: coinbase,
-      to: lockAddress,
+    let txNonce = await web3.eth.getTransactionCount(ETH_ADDRESS);
+    const tx = new EthereumTx({
+      nonce: txNonce,
+      from: ETH_ADDRESS,
+      to: lockContractAddress,
       gas: 100000,
-      data
     });
-    console.log(`Transaction send: ${tx.transactionHash}`);
+    tx.sign(Buffer.from(ETH_PRIVATE_KEY, 'hex'));
+    var raw = '0x' + tx.serialize().toString('hex');
+    const txHash = await web3.eth.sendSignedTransaction(raw);
+    console.log(`Transaction send: ${txHash}`);
   } catch(e) {
     console.log(e);
   }
 }
 
-async function getLockdropBalance() {
+async function getBalance() {
   console.log('Fetching Lockdrop balance...');
   console.log("");
-  const res = await web3.eth.getBalance(contract.options.address);
-  console.log(res);
+  return await ldHelpers.getTotalLockedBalance(contract);
 };
 
 async function getEnding() {
   const coinbase = await web3.eth.getCoinbase();
-  const ending = await contract.methods.ending().call({from: coinbase});
+  const ending = await contract.methods.LOCK_END_TIME().call({from: coinbase});
   const now = await getCurrentTimestamp();
   console.log(`Ending in ${(ending - now) / 60} minutes`);
 }
 
-console.log("");
-console.log('You ordered a pizza with: Locks and drops');
-console.log("");
+if (program.lockers) getLockdropLocks();
 
-if (program.lockers) getFormattedLockdropLockers();
-
-if (program.balance) getLockdropBalance();
+if (program.balance) getBalance();
 
 if (program.deposit) {
   if (!program.lockLength || !program.lockValue || !program.pubKey) {
     throw new Error('Please input a length and value using --lockLength, --lockValue and --pubKey');
   }
-  depositIntoLockdrop(...program.args);
+  lock(program.lockLength, program.lockValue, program.pubKey, program.isValidator);
 }
 
-if (program.withdraw) withdrawDeposit();
+if (program.withdraw) withdraw();
 
 if (program.ending) getEnding();

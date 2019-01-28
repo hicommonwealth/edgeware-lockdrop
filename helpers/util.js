@@ -7,7 +7,7 @@ const advanceTimeAndBlock = async (time) => {
     return getCurrentBlock();
 };
 
-const advanceTime = (time) => {
+const advanceTime = (time, web3) => {
     return new Promise((resolve, reject) => {
         web3.currentProvider.send({
             jsonrpc: '2.0',
@@ -33,7 +33,7 @@ const advanceTime = (time) => {
     });
 };
 
-const advanceBlock = () => {
+const advanceBlock = (web3) => {
     return new Promise((resolve, reject) => {
         web3.currentProvider.send({
             jsonrpc: '2.0',
@@ -49,7 +49,7 @@ const advanceBlock = () => {
     });
 };
 
-function getCurrentBlock() {
+function getCurrentBlock(web3) {
   return new Promise((resolve, reject) => {
     web3.eth.getBlock('latest', function (err, res) {
       if (err) return reject(err);
@@ -58,13 +58,13 @@ function getCurrentBlock() {
   });
 }
 
-async function getCurrentTimestamp() {
-  const block = await getCurrentBlock();
+async function getCurrentTimestamp(web3) {
+  const block = await getCurrentBlock(web3);
   return block.timestamp;
 }
 
 
-const getBalance = (account) => {
+const getBalance = (account, web3) => {
   return new Promise((resolve, reject) => {
     web3.eth.getBalance(account, (err, res) => {
       if (err) reject(err);
@@ -73,7 +73,7 @@ const getBalance = (account) => {
   });
 };
 
-const getTxReceipt = async (txHash) => {
+const getTxReceipt = async (txHash, web3) => {
   return await web3.eth.getTransactionReceipt(txHash);
 }
 

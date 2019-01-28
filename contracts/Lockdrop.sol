@@ -32,16 +32,18 @@ contract Lockdrop {
     
     uint256 constant public LOCK_DROP_PERIOD = 1 days * 14; // two weeks
     uint256 public LOCK_START_TIME;
+    uint256 public LOCK_END_TIME;
     
     event Locked(address indexed owner, uint256 eth, Lock lockAddr, Term term, bytes edgewareKey, bool isValidator);
     
     constructor(uint startTime) public {
         LOCK_START_TIME = startTime;
+        LOCK_END_TIME = startTime + LOCK_DROP_PERIOD;
     }
 
     function lock(Term term, bytes calldata edgewareKey, bool isValidator) external payable {
         require(now >= LOCK_START_TIME);
-        require(now <= LOCK_START_TIME + LOCK_DROP_PERIOD);
+        require(now <= LOCK_END_TIME);
 
         uint256 eth = msg.value;
         address owner = msg.sender;
