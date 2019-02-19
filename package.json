@@ -3,6 +3,8 @@
     "bluebird": "^3.5.3",
     "dotenv": "^6.2.0",
     "ethereumjs-tx": "^1.3.7",
+    "keccak": "^2.0.0",
+    "rlp": "^2.2.2",
     "web3": "^1.0.0-beta.37"
   }
 }

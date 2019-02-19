@@ -19,16 +19,22 @@ function getEffectiveValue(ethAmount, term) {
 
 module.exports = {
   getLocksForAddress: async (lockdropContract, address) => {
-    const locks = {};
-    const lockEvents = await lockdropContract.getPastEvents('Locked', {
+    return await lockdropContract.getPastEvents('Locked', {
       fromBlock: 0,
       toBlock: 'latest',
       filter: {
         owner: address,
       }
     });
-
-    return lockEvents;
+  },
+  getSignals: async (lockdropContract, address) => {
+    return await lockdropContract.getPastEvents('Signaled', {
+      fromBlock: 0,
+      toBlock: 'latest',
+      filter: {
+        contractAddr: address,
+      }
+    });
   },
   getTotalLockedBalance: async (lockdropContract) => {
     const lockEvents = await lockdropContract.getPastEvents('Locked', {

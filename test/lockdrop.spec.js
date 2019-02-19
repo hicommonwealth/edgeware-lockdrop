@@ -2,6 +2,8 @@ const Promise = require('bluebird');
 const utility = require('../helpers/util');
 const ldHelpers = require('../helpers/lockdropHelper');
 const { toWei, toBN, padRight } = web3.utils;
+const rlp = require('rlp');
+const keccak = require('keccak');
 
 const Lock = artifacts.require("./Lock.sol");
 const Lockdrop = artifacts.require("./Lockdrop.sol");
@@ -15,12 +17,12 @@ contract('Lockdrop', (accounts) => {
   let lockdrop;
 
   beforeEach(async function() {
-    let time = await utility.getCurrentTimestamp();
+    let time = await utility.getCurrentTimestamp(web3);
     lockdrop = await Lockdrop.new(time);
   });
 
   it('should setup and pull constants', async function () {
-    let time = await utility.getCurrentTimestamp();
+    let time = await utility.getCurrentTimestamp(web3);
     let LOCK_DROP_PERIOD = (await lockdrop.LOCK_DROP_PERIOD()).toNumber();
     let LOCK_START_TIME = (await lockdrop.LOCK_START_TIME()).toNumber();
     assert.equal(LOCK_DROP_PERIOD, SECONDS_IN_DAY * 14);
@@ -45,13 +47,13 @@ contract('Lockdrop', (accounts) => {
   });
 
   it('should unlock the funds after the lock period has ended', async function () {
-    const balBefore = await utility.getBalance(accounts[1]);
+    const balBefore = await utility.getBalance(accounts[1], web3);
     let txHash = await lockdrop.lock(THREE_MONTHS, accounts[1], true, {
       from: accounts[1],
       value: web3.utils.toWei('1', 'ether'),
     });
 
-    const balAfter = await utility.getBalance(accounts[1]);
+    const balAfter = await utility.getBalance(accounts[1], web3);
 
     const lockEvents = await ldHelpers.getLocksForAddress(lockdrop, accounts[1]);
     const lockStorages = await Promise.all(lockEvents.map(event => {
@@ -61,8 +63,8 @@ contract('Lockdrop', (accounts) => {
 
     const lockContract = await Lock.at(lockEvents[0].returnValues.lockAddr);
 
-    let time = await utility.getCurrentTimestamp();
-    let res = await utility.advanceTime(unlockTime - time + SECONDS_IN_DAY);
+    let time = await utility.getCurrentTimestamp(web3);
+    let res = await utility.advanceTime(unlockTime - time + SECONDS_IN_DAY, web3);
 
     txHash = await lockContract.sendTransaction({
       from: accounts[1],
@@ -70,13 +72,13 @@ contract('Lockdrop', (accounts) => {
       gas: 50000,
     });
 
-    const afterafter = await utility.getBalance(accounts[1]);
+    const afterafter = await utility.getBalance(accounts[1], web3);
     assert.ok(balBefore > balAfter);
     assert.ok(afterafter > balAfter);
   });
 
   it('should not allow one to lock before the lock start time', async function () {
-    let time = await utility.getCurrentTimestamp();
+    let time = await utility.getCurrentTimestamp(web3);
     const newLockdrop = await Lockdrop.new(time + SECONDS_IN_DAY * 10);
     utility.assertRevert(newLockdrop.lock(THREE_MONTHS, accounts[1], true, {
       from: accounts[1],
@@ -90,7 +92,7 @@ contract('Lockdrop', (accounts) => {
       value: web3.utils.toWei('1', 'ether'),
     });
 
-    utility.advanceTime(SECONDS_IN_DAY * 15);
+    utility.advanceTime(SECONDS_IN_DAY * 15, web3);
     utility.assertRevert(lockdrop.lock(THREE_MONTHS, accounts[1], true, {
       from: accounts[1],
       value: web3.utils.toWei('1', 'ether'),
@@ -105,14 +107,14 @@ contract('Lockdrop', (accounts) => {
   });
 
   it('should fail to withdraw funds if not enough gas is sent', async function () {
-    let time = await utility.getCurrentTimestamp();
+    let time = await utility.getCurrentTimestamp(web3);
     const newLockdrop = await Lockdrop.new(time);
     await newLockdrop.lock(THREE_MONTHS, accounts[1], true, {
       from: accounts[1],
       value: web3.utils.toWei('1', 'ether'),
     });
 
-    const balAfter = await utility.getBalance(accounts[1]);
+    const balAfter = await utility.getBalance(accounts[1], web3);
 
     const lockEvents = await ldHelpers.getLocksForAddress(newLockdrop, accounts[1]);
     const lockStorages = await Promise.all(lockEvents.map(event => {
@@ -121,8 +123,8 @@ contract('Lockdrop', (accounts) => {
     let unlockTime = lockStorages[0].unlockTime;
     const lockContract = await Lock.at(lockEvents[0].returnValues.lockAddr);
 
-    time = await utility.getCurrentTimestamp();
-    await utility.advanceTime(unlockTime - time + SECONDS_IN_DAY);
+    time = await utility.getCurrentTimestamp(web3);
+    await utility.advanceTime(unlockTime - time + SECONDS_IN_DAY, web3);
 
     utility.assertRevert(lockContract.sendTransaction({
       from: accounts[1],
@@ -200,5 +202,17 @@ contract('Lockdrop', (accounts) => {
     let { validatingLocks, unvalidatingLocks } = allocation;
     assert.equal(Object.keys(validatingLocks).length, 1);
     assert.equal(Object.keys(unvalidatingLocks).length, 1);
+  });
+
+  it.only('should allow contracts to lock up ETH by signalling', async function () {
+    const sender = accounts[0];
+    const nonce = (await web3.eth.getTransactionCount(sender));
+    const nonceHex = `0x${nonce.toString(16)}`;
+    const input = [ sender, nonce ];
+    const rlpEncoded = rlp.encode(input);
+    const contractAddressLong = keccak('keccak256').update(rlpEncoded).digest('hex');
+    const contractAddr = contractAddressLong.substring(24);
+    await lockdrop.signal(`0x${contractAddr}`, nonce, sender, true, { from: sender });
+    const lockEvents = await ldHelpers.getSignals(lockdrop, contractAddr);
   });
 });
