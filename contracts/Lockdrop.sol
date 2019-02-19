@@ -42,10 +42,12 @@ contract Lockdrop {
         LOCK_END_TIME = startTime + LOCK_DROP_PERIOD;
     }
 
-    function lock(Term term, bytes calldata edgewareKey, bool isValidator) external payable {
-        require(now >= LOCK_START_TIME);
-        require(now <= LOCK_END_TIME);
-
+    function lock(Term term, bytes calldata edgewareKey, bool isValidator)
+        external
+        payable
+        didStart
+        didNotEnd
+    {
         uint256 eth = msg.value;
         address owner = msg.sender;
         uint256 unlockTime = unlockTimeForTerm(term);
@@ -65,10 +67,21 @@ contract Lockdrop {
         revert();
     }
 
-    function signalWithContract(address who, uint256 nonce, bytes calldata edgewareKey, bool isValidator) public didCreate(who, msg.sender, nonce) {
-        require(now >= LOCK_START_TIME);
-        require(now <= LOCK_END_TIME);
+    function signalWithContract(address who, uint256 nonce, bytes calldata edgewareKey, bool isValidator)
+        public
+        didStart
+        didNotEnd
+        didCreate(who, msg.sender, nonce)
+    {
         emit Signalled(who, pubkey, isValidator);
+    }
+
+    modifier didStart() {
+        require(now >= LOCK_START_TIME);
+    }
+
+    modifier didNotEnd() {
+        require(now <= LOCK_END_TIME);
     }
 
     modifier didCreate(address target, address parent, uint256 nonce) {
