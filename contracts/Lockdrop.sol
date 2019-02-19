@@ -35,16 +35,19 @@ contract Lockdrop {
     uint256 public LOCK_END_TIME;
     
     event Locked(address indexed owner, uint256 eth, Lock lockAddr, Term term, bytes edgewareKey, bool isValidator);
+    event Signaled(address indexed contractAddr, bytes edgewareKey, bool isValidator);
     
     constructor(uint startTime) public {
         LOCK_START_TIME = startTime;
         LOCK_END_TIME = startTime + LOCK_DROP_PERIOD;
     }
 
-    function lock(Term term, bytes calldata edgewareKey, bool isValidator) external payable {
-        require(now >= LOCK_START_TIME);
-        require(now <= LOCK_END_TIME);
-
+    function lock(Term term, bytes calldata edgewareKey, bool isValidator)
+        external
+        payable
+        didStart
+        didNotEnd
+    {
         uint256 eth = msg.value;
         address owner = msg.sender;
         uint256 unlockTime = unlockTimeForTerm(term);
@@ -62,5 +65,38 @@ contract Lockdrop {
         if (term == Term.TwelveMo) return LOCK_START_TIME + LOCK_DROP_PERIOD + 365 days;
         
         revert();
+    }
+
+    function signal(address contractAddr, uint32 nonce, bytes memory edgewareKey, bool isValidator)
+        public
+        didStart
+        didNotEnd
+        didCreate(contractAddr, msg.sender, nonce)
+    {
+        emit Signaled(contractAddr, edgewareKey, isValidator);
+    }
+
+    modifier didStart() {
+        require(now >= LOCK_START_TIME);
+        _;
+    }
+
+    modifier didNotEnd() {
+        require(now <= LOCK_END_TIME);
+        _;
+    }
+
+    function addressFrom(address _origin, uint32 _nonce) public pure returns (address) {
+        if(_nonce == 0x00)     return address(uint160(uint256(keccak256(abi.encodePacked(byte(0xd6), byte(0x94), _origin, byte(0x80))))));
+        if(_nonce <= 0x7f)     return address(uint160(uint256(keccak256(abi.encodePacked(byte(0xd6), byte(0x94), _origin, uint8(_nonce))))));
+        if(_nonce <= 0xff)     return address(uint160(uint256(keccak256(abi.encodePacked(byte(0xd7), byte(0x94), _origin, byte(0x81), uint8(_nonce))))));
+        if(_nonce <= 0xffff)   return address(uint160(uint256(keccak256(abi.encodePacked(byte(0xd8), byte(0x94), _origin, byte(0x82), uint16(_nonce))))));
+        if(_nonce <= 0xffffff) return address(uint160(uint256(keccak256(abi.encodePacked(byte(0xd9), byte(0x94), _origin, byte(0x83), uint24(_nonce))))));
+        return address(uint160(uint256(keccak256(abi.encodePacked(byte(0xda), byte(0x94), _origin, byte(0x84), uint32(_nonce)))))); // more than 2^32 nonces not realistic
+    }
+
+    modifier didCreate(address target, address parent, uint32 nonce) {
+        require(target == addressFrom(parent, nonce));
+        _;
     }
 }
