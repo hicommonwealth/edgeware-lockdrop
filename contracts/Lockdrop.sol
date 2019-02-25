@@ -47,7 +47,7 @@ contract DOTsLock {
             amount := sload(0x02)
         }
 
-        require(now > unlockTime, "Lock term has not ended");
+        require(now > unlockTime);
         ERC20(DOTS).transfer(owner, amount);
     }
 }
@@ -60,15 +60,18 @@ contract Lockdrop {
         SixMo,
         TwelveMo
     }
-    
+    // DOTS contract
     address constant public DOTS = 0xb59f67A8BfF5d8Cd03f6AC17265c550Ed8F33907;
-
+    // Time constants
     uint256 constant public LOCK_DROP_PERIOD = 1 days * 14; // two weeks
     uint256 public LOCK_START_TIME;
     uint256 public LOCK_END_TIME;
-    
+    // ETH locking events
     event Locked(address indexed owner, uint256 eth, Lock lockAddr, Term term, bytes edgewareKey, bool isValidator);
     event Signaled(address indexed contractAddr, bytes edgewareKey, bool isValidator);
+    // DOT locking events
+    event LockedDOTs(address indexed owner, uint256 dots, DOTsLock lockAddr, Term term, bytes edgewareKey, bool isValidator);
+    event SignaledDOTs(address indexed contractAddr, bytes edgewareKey, bool isValidator);
     
     constructor(uint startTime) public {
         LOCK_START_TIME = startTime;
@@ -84,11 +87,12 @@ contract Lockdrop {
         uint256 eth = msg.value;
         address owner = msg.sender;
         uint256 unlockTime = unlockTimeForTerm(term);
-        
+        // Create ETH lock contract
         Lock lockAddr = (new Lock).value(eth)(owner, unlockTime);
-        assert(address(lockAddr).balance == msg.value); // ensure lock contract has all ETH, or fail
-        assert(address(this).balance == 0); // ensure contract has no ETH, or fail
-        
+        // ensure lock contract has all ETH, or fail
+        assert(address(lockAddr).balance == msg.value);
+        // ensure contract has no ETH, or fail
+        assert(address(this).balance == 0); 
         emit Locked(owner, eth, lockAddr, term, edgewareKey, isValidator);
     }
 
@@ -99,11 +103,12 @@ contract Lockdrop {
     {
         address owner = msg.sender;
         uint256 unlockTime = unlockTimeForTerm(term);
-        // Check balance of sender
-        require(ERC20(DOTS).balanceOf(msg.sender) >= tokenAmount, "Sender has insufficient balance");
+        // Ensure balance of sender is sufficient
+        assert(ERC20(DOTS).balanceOf(msg.sender) >= tokenAmount);
         // Create DOTs lock contract
         DOTsLock lockAddr = (new DOTsLock)(owner, unlockTime, tokenAmount);
         ERC20(DOTS).transfer(address(lockAddr), tokenAmount);
+        emit LockedDOTs(owner, tokenAmount, lockAddr, term, edgewareKey, isValidator);
     }
     
     function unlockTimeForTerm(Term term) internal view returns (uint256) {
@@ -121,6 +126,15 @@ contract Lockdrop {
         didCreate(contractAddr, msg.sender, nonce)
     {
         emit Signaled(contractAddr, edgewareKey, isValidator);
+    }
+
+    function signalDOTs(address contractAddr, uint32 nonce, bytes memory edgewareKey, bool isValidator)
+        public
+        didStart
+        didNotEnd
+        didCreate(contractAddr, msg.sender, nonce)
+    {
+        emit SignaledDOTs(contractAddr, edgewareKey, isValidator);
     }
 
     modifier didStart() {
@@ -143,7 +157,12 @@ contract Lockdrop {
     }
 
     modifier didCreate(address target, address parent, uint32 nonce) {
-        require(target == addressFrom(parent, nonce));
-        _;
+        // Trivially let senders "create" themselves
+        if (target == parent) {
+            _;
+        } else {
+            require(target == addressFrom(parent, nonce));
+            _;
+        }
     }
 }
