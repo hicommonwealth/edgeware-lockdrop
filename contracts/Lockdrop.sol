@@ -1,9 +1,10 @@
 pragma solidity ^0.5.0;
 
+import 'openzeppelin-solidity/contracts/token/ERC20/ERC20.sol';
+
 contract Lock {
     // address owner; slot #0
     // address unlockTime; slot #1
-    
     constructor (address owner, uint256 unlockTime) public payable {
         assembly {
             sstore(0x00, owner)
@@ -23,6 +24,36 @@ contract Lock {
     }
 }
 
+contract DOTsLock {
+    // address owner; slot #0
+    // address unlockTime; slot #1
+    address constant public DOTS = 0xb59f67A8BfF5d8Cd03f6AC17265c550Ed8F33907;
+    constructor (address owner, uint256 unlockTime, uint256 amount) public payable {
+        assembly {
+            sstore(0x00, owner)
+            sstore(0x01, unlockTime)
+            sstore(0x02, amount)
+        }
+    }
+    
+    function () external payable { // payable so solidity doesn't add unnecessary logic
+        address owner;
+        uint256 unlockTime;
+        uint256 amount;
+    
+        assembly {
+            owner := sload(0x00)
+            unlockTime := sload(0x01)
+            amount := sload(0x02)
+        }
+
+        require(now > unlockTime, "Lock term has not ended");
+        ERC20(DOTS).transfer(owner, amount);
+    }
+}
+
+
+
 contract Lockdrop {
     enum Term {
         ThreeMo,
@@ -30,6 +61,8 @@ contract Lockdrop {
         TwelveMo
     }
     
+    address constant public DOTS = 0xb59f67A8BfF5d8Cd03f6AC17265c550Ed8F33907;
+
     uint256 constant public LOCK_DROP_PERIOD = 1 days * 14; // two weeks
     uint256 public LOCK_START_TIME;
     uint256 public LOCK_END_TIME;
@@ -57,6 +90,20 @@ contract Lockdrop {
         assert(address(this).balance == 0); // ensure contract has no ETH, or fail
         
         emit Locked(owner, eth, lockAddr, term, edgewareKey, isValidator);
+    }
+
+    function lockDOTs(Term term, bytes calldata edgewareKey, bool isValidator, uint tokenAmount)
+        external
+        didStart
+        didNotEnd
+    {
+        address owner = msg.sender;
+        uint256 unlockTime = unlockTimeForTerm(term);
+        // Check balance of sender
+        require(ERC20(DOTS).balanceOf(msg.sender) >= tokenAmount, "Sender has insufficient balance");
+        // Create DOTs lock contract
+        DOTsLock lockAddr = (new DOTsLock)(owner, unlockTime, tokenAmount);
+        ERC20(DOTS).transfer(address(lockAddr), tokenAmount);
     }
     
     function unlockTimeForTerm(Term term) internal view returns (uint256) {
