@@ -1,6 +1,8 @@
 pragma solidity ^0.5.0;
 
 import 'openzeppelin-solidity/contracts/token/ERC20/ERC20.sol';
+import "./DOTMock.sol";
+
 
 contract Lock {
     // address owner; slot #0
@@ -25,28 +27,18 @@ contract Lock {
 }
 
 contract DOTsLock {
-    // address owner; slot #0
-    // address unlockTime; slot #1
     address constant public DOTS = 0xb59f67A8BfF5d8Cd03f6AC17265c550Ed8F33907;
-    constructor (address owner, uint256 unlockTime, uint256 amount) public payable {
-        assembly {
-            sstore(0x00, owner)
-            sstore(0x01, unlockTime)
-            sstore(0x02, amount)
-        }
+    address owner;
+    uint256 unlockTime;
+    uint256 amount;
+
+    constructor (address _owner, uint256 _unlockTime, uint256 _amount) public payable {
+        owner = _owner;
+        unlockTime = _unlockTime;
+        amount = _amount;
     }
     
-    function () external payable { // payable so solidity doesn't add unnecessary logic
-        address owner;
-        uint256 unlockTime;
-        uint256 amount;
-    
-        assembly {
-            owner := sload(0x00)
-            unlockTime := sload(0x01)
-            amount := sload(0x02)
-        }
-
+    function withdraw() public {
         require(now > unlockTime);
         ERC20(DOTS).transfer(owner, amount);
     }
@@ -61,7 +53,8 @@ contract Lockdrop {
         TwelveMo
     }
     // DOTS contract
-    address constant public DOTS = 0xb59f67A8BfF5d8Cd03f6AC17265c550Ed8F33907;
+    // address constant public DOTS = 0xb59f67A8BfF5d8Cd03f6AC17265c550Ed8F33907;
+    address public DOTS_TEMP;
     // Time constants
     uint256 constant public LOCK_DROP_PERIOD = 1 days * 14; // two weeks
     uint256 public LOCK_START_TIME;
@@ -76,6 +69,10 @@ contract Lockdrop {
     constructor(uint startTime) public {
         LOCK_START_TIME = startTime;
         LOCK_END_TIME = startTime + LOCK_DROP_PERIOD;
+        DOTMock DOT = new DOTMock();
+        DOT.mint(msg.sender, 1 ether);
+        DOTS_TEMP = address(DOT);
+
     }
 
     function lock(Term term, bytes calldata edgewareKey, bool isValidator)
@@ -103,11 +100,9 @@ contract Lockdrop {
     {
         address owner = msg.sender;
         uint256 unlockTime = unlockTimeForTerm(term);
-        // Ensure balance of sender is sufficient
-        assert(ERC20(DOTS).balanceOf(msg.sender) >= tokenAmount);
         // Create DOTs lock contract
-        DOTsLock lockAddr = (new DOTsLock)(owner, unlockTime, tokenAmount);
-        ERC20(DOTS).transfer(address(lockAddr), tokenAmount);
+        DOTsLock lockAddr = new DOTsLock(owner, unlockTime, tokenAmount);
+        bool res = ERC20(DOTS_TEMP).transferFrom(msg.sender, address(lockAddr), tokenAmount);
         emit LockedDOTs(owner, tokenAmount, lockAddr, term, edgewareKey, isValidator);
     }
     
