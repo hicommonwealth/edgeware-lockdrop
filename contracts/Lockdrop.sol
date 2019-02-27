@@ -26,21 +26,22 @@ contract Lock {
     }
 }
 
-contract DOTsLock {
-    address constant public DOTS = 0xb59f67A8BfF5d8Cd03f6AC17265c550Ed8F33907;
-    address owner;
-    uint256 unlockTime;
-    uint256 amount;
+contract DOTLock {
+    address public owner;
+    uint256 public unlockTime;
+    uint256 public amount;
+    address public dotAddr;
 
-    constructor (address _owner, uint256 _unlockTime, uint256 _amount) public payable {
+    constructor (address _owner, uint256 _unlockTime, uint256 _amount, address _dotAddr) public {
         owner = _owner;
         unlockTime = _unlockTime;
         amount = _amount;
+        dotAddr = _dotAddr;
     }
     
-    function withdraw() public {
+    function () external {
         require(now > unlockTime);
-        ERC20(DOTS).transfer(owner, amount);
+        ERC20(dotAddr).transfer(owner, amount);
     }
 }
 
@@ -63,8 +64,8 @@ contract Lockdrop {
     event Locked(address indexed owner, uint256 eth, Lock lockAddr, Term term, bytes edgewareKey, bool isValidator);
     event Signaled(address indexed contractAddr, bytes edgewareKey, bool isValidator);
     // DOT locking events
-    event LockedDOTs(address indexed owner, uint256 dots, DOTsLock lockAddr, Term term, bytes edgewareKey, bool isValidator);
-    event SignaledDOTs(address indexed contractAddr, bytes edgewareKey, bool isValidator);
+    event LockedDOT(address indexed owner, uint256 dots, DOTLock lockAddr, Term term, bytes edgewareKey, bool isValidator);
+    event SignaledDOT(address indexed contractAddr, bytes edgewareKey, bool isValidator);
     
     constructor(uint startTime) public {
         LOCK_START_TIME = startTime;
@@ -101,9 +102,10 @@ contract Lockdrop {
         address owner = msg.sender;
         uint256 unlockTime = unlockTimeForTerm(term);
         // Create DOTs lock contract
-        DOTsLock lockAddr = new DOTsLock(owner, unlockTime, tokenAmount);
-        bool res = ERC20(DOTS_TEMP).transferFrom(msg.sender, address(lockAddr), tokenAmount);
-        emit LockedDOTs(owner, tokenAmount, lockAddr, term, edgewareKey, isValidator);
+        DOTLock lockAddr = new DOTLock(owner, unlockTime, tokenAmount, DOTS_TEMP);
+        if (ERC20(DOTS_TEMP).transferFrom(msg.sender, address(lockAddr), tokenAmount)) {
+            emit LockedDOT(owner, tokenAmount, lockAddr, term, edgewareKey, isValidator);    
+        }
     }
     
     function unlockTimeForTerm(Term term) internal view returns (uint256) {
@@ -129,7 +131,7 @@ contract Lockdrop {
         didNotEnd
         didCreate(contractAddr, msg.sender, nonce)
     {
-        emit SignaledDOTs(contractAddr, edgewareKey, isValidator);
+        emit SignaledDOT(contractAddr, edgewareKey, isValidator);
     }
 
     modifier didStart() {

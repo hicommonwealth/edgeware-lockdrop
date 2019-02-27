@@ -35,7 +35,7 @@ contract('Lockdrop', (accounts) => {
       value: 1,
     });
 
-    const lockEvents = await ldHelpers.getLocksForAddress(lockdrop, accounts[1]);
+    const lockEvents = await ldHelpers.getLocks(lockdrop, accounts[1]);
     assert.equal(lockEvents.length, 1);
     assert.equal(lockEvents[0].args.isValidator, true);
 
@@ -55,7 +55,7 @@ contract('Lockdrop', (accounts) => {
 
     const balAfter = await utility.getBalance(accounts[1], web3);
 
-    const lockEvents = await ldHelpers.getLocksForAddress(lockdrop, accounts[1]);
+    const lockEvents = await ldHelpers.getLocks(lockdrop, accounts[1]);
     const lockStorages = await Promise.all(lockEvents.map(event => {
       return ldHelpers.getLockStorage(event.returnValues.lockAddr);
     }));
@@ -116,7 +116,7 @@ contract('Lockdrop', (accounts) => {
 
     const balAfter = await utility.getBalance(accounts[1], web3);
 
-    const lockEvents = await ldHelpers.getLocksForAddress(newLockdrop, accounts[1]);
+    const lockEvents = await ldHelpers.getLocks(newLockdrop, accounts[1]);
     const lockStorages = await Promise.all(lockEvents.map(event => {
       return ldHelpers.getLockStorage(event.returnValues.lockAddr);
     }));
