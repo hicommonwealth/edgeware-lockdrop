@@ -204,7 +204,7 @@ contract('Lockdrop', (accounts) => {
     assert.equal(Object.keys(unvalidatingLocks).length, 1);
   });
 
-  it.only('should allow contracts to lock up ETH by signalling', async function () {
+  it('should allow contracts to lock up ETH by signalling', async function () {
     const sender = accounts[0];
     const nonce = (await web3.eth.getTransactionCount(sender));
     const nonceHex = `0x${nonce.toString(16)}`;
