@@ -1,9 +1,10 @@
 pragma solidity ^0.5.0;
 
+import 'openzeppelin-solidity/contracts/token/ERC20/ERC20.sol';
+
 contract Lock {
     // address owner; slot #0
     // address unlockTime; slot #1
-    
     constructor (address owner, uint256 unlockTime) public payable {
         assembly {
             sstore(0x00, owner)
@@ -23,17 +24,18 @@ contract Lock {
     }
 }
 
+
 contract Lockdrop {
     enum Term {
         ThreeMo,
         SixMo,
         TwelveMo
     }
-    
+    // Time constants
     uint256 constant public LOCK_DROP_PERIOD = 1 days * 14; // two weeks
     uint256 public LOCK_START_TIME;
     uint256 public LOCK_END_TIME;
-    
+    // ETH locking events
     event Locked(address indexed owner, uint256 eth, Lock lockAddr, Term term, bytes edgewareKey, bool isValidator);
     event Signaled(address indexed contractAddr, bytes edgewareKey, bool isValidator);
     
@@ -51,11 +53,12 @@ contract Lockdrop {
         uint256 eth = msg.value;
         address owner = msg.sender;
         uint256 unlockTime = unlockTimeForTerm(term);
-        
+        // Create ETH lock contract
         Lock lockAddr = (new Lock).value(eth)(owner, unlockTime);
-        assert(address(lockAddr).balance == msg.value); // ensure lock contract has all ETH, or fail
-        assert(address(this).balance == 0); // ensure contract has no ETH, or fail
-        
+        // ensure lock contract has all ETH, or fail
+        assert(address(lockAddr).balance == msg.value);
+        // ensure contract has no ETH, or fail
+        assert(address(this).balance == 0); 
         emit Locked(owner, eth, lockAddr, term, edgewareKey, isValidator);
     }
     
@@ -96,7 +99,12 @@ contract Lockdrop {
     }
 
     modifier didCreate(address target, address parent, uint32 nonce) {
-        require(target == addressFrom(parent, nonce));
-        _;
+        // Trivially let senders "create" themselves
+        if (target == parent) {
+            _;
+        } else {
+            require(target == addressFrom(parent, nonce));
+            _;
+        }
     }
 }
