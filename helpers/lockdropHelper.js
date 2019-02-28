@@ -36,24 +36,6 @@ module.exports = {
       }
     });
   },
-  getDOTLocks: async (lockdropContract, address) => {
-    return await lockdropContract.getPastEvents('LockedDOT', {
-      fromBlock: 0,
-      toBlock: 'latest',
-      filter: {
-        contractAddr: address,
-      }
-    });
-  },
-  getDOTSignals: async (lockdropContract, address) => {
-    return await lockdropContract.getPastEvents('SignaledDOT', {
-      fromBlock: 0,
-      toBlock: 'latest',
-      filter: {
-        contractAddr: address,
-      }
-    });
-  },
   getTotalLockedBalance: async (lockdropContract) => {
     const lockEvents = await lockdropContract.getPastEvents('Locked', {
       fromBlock: 0,

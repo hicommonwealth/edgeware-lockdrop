@@ -24,26 +24,6 @@ contract Lock {
     }
 }
 
-contract DOTLock {
-    address public owner;
-    uint256 public unlockTime;
-    uint256 public amount;
-    address public dotAddr;
-
-    constructor (address _owner, uint256 _unlockTime, uint256 _amount, address _dotAddr) public {
-        owner = _owner;
-        unlockTime = _unlockTime;
-        amount = _amount;
-        dotAddr = _dotAddr;
-    }
-    
-    function () external {
-        require(now > unlockTime);
-        ERC20(dotAddr).transfer(owner, amount);
-    }
-}
-
-
 
 contract Lockdrop {
     enum Term {
@@ -51,8 +31,6 @@ contract Lockdrop {
         SixMo,
         TwelveMo
     }
-    // DOTS contract on Mainnet
-    address constant public DOTS = 0xb59f67A8BfF5d8Cd03f6AC17265c550Ed8F33907;
     // Time constants
     uint256 constant public LOCK_DROP_PERIOD = 1 days * 14; // two weeks
     uint256 public LOCK_START_TIME;
@@ -60,9 +38,6 @@ contract Lockdrop {
     // ETH locking events
     event Locked(address indexed owner, uint256 eth, Lock lockAddr, Term term, bytes edgewareKey, bool isValidator);
     event Signaled(address indexed contractAddr, bytes edgewareKey, bool isValidator);
-    // DOT locking events
-    event LockedDOT(address indexed owner, uint256 dots, DOTLock lockAddr, Term term, bytes edgewareKey, bool isValidator);
-    event SignaledDOT(address indexed contractAddr, bytes edgewareKey, bool isValidator);
     
     constructor(uint startTime) public {
         LOCK_START_TIME = startTime;
@@ -86,20 +61,6 @@ contract Lockdrop {
         assert(address(this).balance == 0); 
         emit Locked(owner, eth, lockAddr, term, edgewareKey, isValidator);
     }
-
-    function lockDOTs(Term term, bytes calldata edgewareKey, bool isValidator, uint tokenAmount)
-        external
-        didStart
-        didNotEnd
-    {
-        address owner = msg.sender;
-        uint256 unlockTime = unlockTimeForTerm(term);
-        // Create DOTs lock contract
-        DOTLock lockAddr = new DOTLock(owner, unlockTime, tokenAmount, DOTS);
-        if (ERC20(DOTS).transferFrom(msg.sender, address(lockAddr), tokenAmount)) {
-            emit LockedDOT(owner, tokenAmount, lockAddr, term, edgewareKey, isValidator);    
-        }
-    }
     
     function unlockTimeForTerm(Term term) internal view returns (uint256) {
         if (term == Term.ThreeMo) return LOCK_START_TIME + LOCK_DROP_PERIOD + 92 days;
@@ -116,15 +77,6 @@ contract Lockdrop {
         didCreate(contractAddr, msg.sender, nonce)
     {
         emit Signaled(contractAddr, edgewareKey, isValidator);
-    }
-
-    function signalDOTs(address contractAddr, uint32 nonce, bytes memory edgewareKey, bool isValidator)
-        public
-        didStart
-        didNotEnd
-        didCreate(contractAddr, msg.sender, nonce)
-    {
-        emit SignaledDOT(contractAddr, edgewareKey, isValidator);
     }
 
     modifier didStart() {
