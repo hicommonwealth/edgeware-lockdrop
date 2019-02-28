@@ -42,16 +42,17 @@ module.exports = {
       toBlock: 'latest',
     });
 
+    let totalAmountInETH = toBN(0);
     lockEvents.forEach((event) => {
       const data = event.returnValues;
-      totalAmount = totalAmount.add(toBN(data.eth));
+      totalAmountInETH = totalAmountInETH.add(toBN(data.eth));
     });
 
-    return web3.utils.fromWei(totalAmount.toString(), 'ether');
+    return web3.utils.fromWei(totalAmountInETH.toString(), 'ether');
   },
   calculateEffectiveLocks: async (lockdropContract, totalAllocation) => {
-    let totalAmount = toBN(0);
-    const unvalidatingLocks = {};
+    let totalAmountInETH = toBN(0);
+    const allLocks = {};
     const validatingLocks = {};
 
     const lockEvents = await lockdropContract.getPastEvents('Locked', {
@@ -62,60 +63,57 @@ module.exports = {
     lockEvents.forEach((event) => {
       const data = event.returnValues;
       let value = getEffectiveValue(data.eth, data.term);
-      totalAmount = totalAmount.add(value);
+      totalAmountInETH = totalAmountInETH.add(value);
 
-      if (!data.isValidator) {
-        if (data.edgewareKey in unvalidatingLocks) {
-          unvalidatingLocks[data.edgewareKey] = {
-            effectiveValue: unvalidatingLocks[data.edgewareKey].effectiveValue.add(value),
-            lockAddrs: [ data.lockAddr, ...unvalidatingLocks[data.edgewareKey].lockAddrs],
-            isValidator: data.isValidator,
-          };
-        } else {
-          unvalidatingLocks[data.edgewareKey] = {
-            effectiveValue: value,
-            lockAddrs: [data.lockAddr],
-            isValidator: data.isValidator,
-          };
-        }
-      } else {
+      if (data.isValidator) {
         if (data.edgewareKey in validatingLocks) {
           validatingLocks[data.edgewareKey] = {
-            effectiveValue: validatingLocks[data.edgewareKey].effectiveValue.add(value),
+            lockAmt: toBN(data.eth).add(toBN(validatingLocks[data.edgewareKey].lockAmt)).toString(),
+            effectiveValue: toBN(validatingLocks[data.edgewareKey].effectiveValue).add(value).toString(),
             lockAddrs: [ data.lockAddr, ...validatingLocks[data.edgewareKey].lockAddrs],
-            isValidator: data.isValidator,
           };
         } else {
           validatingLocks[data.edgewareKey] = {
-            effectiveValue: value,
+            lockAmt: toBN(data.eth).toString(),
+            effectiveValue: value.toString(),
             lockAddrs: [data.lockAddr],
-            isValidator: data.isValidator,
           };
         }
+      }
+
+      if (data.edgewareKey in allLocks) {
+        allLocks[data.edgewareKey] = {
+          lockAmt: toBN(data.eth).add(toBN(allLocks[data.edgewareKey].lockAmt)).toString(),
+          effectiveValue: toBN(allLocks[data.edgewareKey].effectiveValue).add(value).toString(),
+          lockAddrs: [ data.lockAddr, ...allLocks[data.edgewareKey].lockAddrs],
+        };
+      } else {
+        allLocks[data.edgewareKey] = {
+          lockAmt: toBN(data.eth).toString(),
+          effectiveValue: value.toString(),
+          lockAddrs: [data.lockAddr],
+        };
       }
     });
 
-    for (key in unvalidatingLocks) {
-      unvalidatingLocks[key] = {
-        ...unvalidatingLocks[key],
-        edgewareBalance: toBN(totalAllocation)
-                           .div(totalAmount)
-                           .mul(unvalidatingLocks[key].effectiveValue)
-                           .toString(),
+    let totalTokensIssued = toBN(0);
+    for (key in allLocks) {
+      let alloc = toBN(totalAllocation).mul(toBN(allLocks[key].effectiveValue)).div(totalAmountInETH).toString()
+      totalTokensIssued = totalTokensIssued.add(toBN(alloc));
+      allLocks[key] = {
+        ...allLocks[key],
+        edgewareBalance: alloc,
+      }
+
+      if (key in validatingLocks) {
+        validatingLocks[key] = {
+          ...validatingLocks[key],
+          edgewareBalance: alloc,
+        }        
       }
     }
 
-    for (key in validatingLocks) {
-      validatingLocks[key] = {
-        ...validatingLocks[key],
-        edgewareBalance: toBN(totalAllocation)
-                           .div(totalAmount)
-                           .mul(validatingLocks[key].effectiveValue)
-                           .toString(),
-      }
-    }
-
-    return { validatingLocks, unvalidatingLocks };
+    return { validatingLocks, allLocks, total: totalTokensIssued.toString() };
   },
   getLockStorage: async (lockAddress) => {
     return Promise.all([0,1].map(v => {
@@ -127,5 +125,25 @@ module.exports = {
         unlockTime: web3.utils.hexToNumber(vals[1]),
       };
     });
+  },
+  selectEdgewareValidators: (validatingLocks, num_of_validators) => {
+    const sortable = [];
+    for (var key in validatingLocks) {
+        sortable.push([key, toBN(validatingLocks[key].edgewareBalance)]);
+    }
+    sortable.sort((a,b) => (a
+      [1] > b[1]) ? 1 : ((b[1] > a[1]) ? -1 : 0)); 
+    return sortable.slice(0, num_of_validators);
+  },
+  getEdgewareGenesisObjects: (validators, allLocks) => {
+    let balances = [];
+    for (var key in allLocks) {
+      balances.push([
+        allLocks[key].edgewareKey,
+        allLocks[key].edgewareBalance,
+      ]);
+    }
+
+    return { balances: balances, validators: validators };
   },
 };

@@ -163,7 +163,7 @@ contract('Lockdrop', (accounts) => {
     let { validatingLocks, unvalidatingLocks } = allocation;
 
     for (key in validatingLocks) {
-      assert.equal(validatingLocks[key].edgewareBalance, '499999999800000000000000000');
+      assert.equal(validatingLocks[key].edgewareBalance, '500000000000000000000000000');
     }
   });
 
@@ -180,7 +180,7 @@ contract('Lockdrop', (accounts) => {
     let { validatingLocks, unvalidatingLocks } = allocation;
 
     for (key in validatingLocks) {
-      assert.equal(validatingLocks[key].edgewareBalance, '499999999800000000000000000');
+      assert.equal(validatingLocks[key].edgewareBalance, '500000000000000000000000000');
     }
   });
 
@@ -199,9 +199,28 @@ contract('Lockdrop', (accounts) => {
 
     const totalAllocation = '5000000000000000000000000000';
     const allocation = await ldHelpers.calculateEffectiveLocks(lockdrop, totalAllocation);
-    let { validatingLocks, unvalidatingLocks } = allocation;
+    let { validatingLocks, allLocks, total } = allocation;
     assert.equal(Object.keys(validatingLocks).length, 1);
-    assert.equal(Object.keys(unvalidatingLocks).length, 1);
+    assert.equal(Object.keys(allLocks).length, 1);
+  });
+
+  it('should turn a lockdrop allocation into the substrate genesis format', async function () {
+    await Promise.all(accounts.map(async (a, inx) => {
+      return await lockdrop.lock(TWELVE_MONTHS, a, (Math.random() > 0.5) ? true : false, {
+        from: a,
+        value: web3.utils.toWei(`${inx + 1}`, 'ether'),
+      });
+    }));
+
+    const totalAllocation = '5000000000000000000000000000';
+    const allocation = await ldHelpers.calculateEffectiveLocks(lockdrop, totalAllocation);
+    let { validatingLocks, allLocks, total } = allocation;
+    assert.ok(toBN(total) > toBN(totalAllocation).sub(toBN(10)));
+    let validators = ldHelpers.selectEdgewareValidators(validatingLocks, 10);
+    assert(validators.length < 10);
+    let json = await ldHelpers.getEdgewareGenesisObjects(validators, allLocks);
+    assert.ok(json.hasOwnProperty('balances'));
+    assert.ok(json.hasOwnProperty('validators'));
   });
 
   it('should allow contracts to lock up ETH by signalling', async function () {
