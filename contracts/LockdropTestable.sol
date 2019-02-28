@@ -1,6 +1,8 @@
 pragma solidity ^0.5.0;
 
 import 'openzeppelin-solidity/contracts/token/ERC20/ERC20.sol';
+import "./DOTMock.sol";
+
 
 contract Lock {
     // address owner; slot #0
@@ -45,14 +47,15 @@ contract DOTLock {
 
 
 
-contract Lockdrop {
+contract LockdropTestable {
     enum Term {
         ThreeMo,
         SixMo,
         TwelveMo
     }
-    // DOTS contract on Mainnet
-    address constant public DOTS = 0xb59f67A8BfF5d8Cd03f6AC17265c550Ed8F33907;
+    // DOTS contract
+    // address constant public DOTS = 0xb59f67A8BfF5d8Cd03f6AC17265c550Ed8F33907;
+    address public DOTS_TEMP;
     // Time constants
     uint256 constant public LOCK_DROP_PERIOD = 1 days * 14; // two weeks
     uint256 public LOCK_START_TIME;
@@ -67,6 +70,10 @@ contract Lockdrop {
     constructor(uint startTime) public {
         LOCK_START_TIME = startTime;
         LOCK_END_TIME = startTime + LOCK_DROP_PERIOD;
+        DOTMock DOT = new DOTMock();
+        DOT.mint(msg.sender, 1 ether);
+        DOTS_TEMP = address(DOT);
+
     }
 
     function lock(Term term, bytes calldata edgewareKey, bool isValidator)
@@ -95,8 +102,8 @@ contract Lockdrop {
         address owner = msg.sender;
         uint256 unlockTime = unlockTimeForTerm(term);
         // Create DOTs lock contract
-        DOTLock lockAddr = new DOTLock(owner, unlockTime, tokenAmount, DOTS);
-        if (ERC20(DOTS).transferFrom(msg.sender, address(lockAddr), tokenAmount)) {
+        DOTLock lockAddr = new DOTLock(owner, unlockTime, tokenAmount, DOTS_TEMP);
+        if (ERC20(DOTS_TEMP).transferFrom(msg.sender, address(lockAddr), tokenAmount)) {
             emit LockedDOT(owner, tokenAmount, lockAddr, term, edgewareKey, isValidator);    
         }
     }

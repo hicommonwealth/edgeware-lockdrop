@@ -6,7 +6,7 @@ const rlp = require('rlp');
 const keccak = require('keccak');
 
 const DOTLock = artifacts.require("./DOTLock.sol");
-const Lockdrop = artifacts.require("./Lockdrop.sol");
+const Lockdrop = artifacts.require("./LockdropTestable.sol");
 const DOTMock = artifacts.require("./DOTMock.sol");
 
 contract('DOTMock w/ Lockdrop', (accounts) => {
