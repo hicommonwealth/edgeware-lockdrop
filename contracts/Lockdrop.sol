@@ -24,7 +24,6 @@ contract Lock {
     }
 }
 
-
 contract Lockdrop {
     enum Term {
         ThreeMo,

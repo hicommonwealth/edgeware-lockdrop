@@ -142,12 +142,12 @@ contract('Lockdrop', (accounts) => {
     }));
 
     const totalAllocation = '5000000000000000000000000000';
-    const allocation = await ldHelpers.calculateEffectiveLocks(lockdrop, totalAllocation);
+    const allocation = await ldHelpers.calculateEffectiveLocks(lockdrop);
     let { validatingLocks, unvalidatingLocks } = allocation;
 
-    for (key in validatingLocks) {
-      assert.equal(validatingLocks[key].edgewareBalance, toBN(totalAllocation).div(toBN(accounts.length)).toString());
-    }
+    // for (key in validatingLocks) {
+    //   assert.equal(validatingLocks[key].edgewareBalance, toBN(totalAllocation).div(toBN(accounts.length)).toString());
+    // }
   });
 
   it('should generate the allocation for a substrate genesis spec with SIX_MONTHS term', async function () {
@@ -159,12 +159,12 @@ contract('Lockdrop', (accounts) => {
     }));
 
     const totalAllocation = '5000000000000000000000000000';
-    const allocation = await ldHelpers.calculateEffectiveLocks(lockdrop, totalAllocation);
+    const allocation = await ldHelpers.calculateEffectiveLocks(lockdrop);
     let { validatingLocks, unvalidatingLocks } = allocation;
 
-    for (key in validatingLocks) {
-      assert.equal(validatingLocks[key].edgewareBalance, toBN(totalAllocation).div(toBN(accounts.length)).toString());
-    }
+    // for (key in validatingLocks) {
+    //   assert.equal(validatingLocks[key].edgewareBalance, toBN(totalAllocation).div(toBN(accounts.length)).toString());
+    // }
   });
 
   it('should generate the allocation for a substrate genesis spec with TWELVE_MONTHS term', async function () {
@@ -176,12 +176,12 @@ contract('Lockdrop', (accounts) => {
     }));
 
     const totalAllocation = '5000000000000000000000000000';
-    const allocation = await ldHelpers.calculateEffectiveLocks(lockdrop, totalAllocation);
-    let { validatingLocks, unvalidatingLocks } = allocation;
+    const allocation = await ldHelpers.calculateEffectiveLocks(lockdrop);
+    let { validatingLocks, locks, totalETHLocked } = allocation;
 
-    for (key in validatingLocks) {
-      assert.equal(validatingLocks[key].edgewareBalance, toBN(totalAllocation).div(toBN(accounts.length)).toString());
-    }
+    // for (key in validatingLocks) {
+    //   assert.equal(validatingLocks[key].edgewareBalance, toBN(totalAllocation).div(toBN(accounts.length)).toString());
+    // }
   });
 
   it('should aggregate the balances for all non validators and separate for validators', async function () {
@@ -198,10 +198,10 @@ contract('Lockdrop', (accounts) => {
     });
 
     const totalAllocation = '5000000000000000000000000000';
-    const allocation = await ldHelpers.calculateEffectiveLocks(lockdrop, totalAllocation);
-    let { validatingLocks, allEvents, total } = allocation;
+    const allocation = await ldHelpers.calculateEffectiveLocks(lockdrop);
+    let { validatingLocks, locks, totalETHLocked } = allocation;
     assert.equal(Object.keys(validatingLocks).length, 1);
-    assert.equal(Object.keys(allEvents).length, 1);
+    assert.equal(Object.keys(locks).length, 1);
   });
 
   it('should turn a lockdrop allocation into the substrate genesis format', async function () {
@@ -213,14 +213,16 @@ contract('Lockdrop', (accounts) => {
     }));
 
     const totalAllocation = '5000000000000000000000000000';
-    const allocation = await ldHelpers.calculateEffectiveLocks(lockdrop, totalAllocation);
-    let { validatingLocks, allEvents, total } = allocation;
-    assert.ok(toBN(total) > toBN(totalAllocation).sub(toBN(10)));
-    let validators = ldHelpers.selectEdgewareValidators(validatingLocks, 10);
+    const allocation = await ldHelpers.calculateEffectiveLocks(lockdrop);
+    let { validatingLocks, locks, totalETHLocked } = allocation;
+    const signalAllocation = await ldHelpers.getEffectiveSignals(lockdrop);
+    let { signals, totalETHSignaled } = signalAllocation;
+    const totalETH = totalETHLocked.add(totalETHSignaled);
+    let json = await ldHelpers.getEdgewareBalanceObjects(validatingLocks, locks, totalAllocation, totalETH);
+    let validators = ldHelpers.selectEdgewareValidators(validatingLocks, totalAllocation, totalETH, 10);
     assert(validators.length < 10);
-    let json = await ldHelpers.getEdgewareGenesisObjects(validators, allEvents);
     assert.ok(json.hasOwnProperty('balances'));
-    assert.ok(json.hasOwnProperty('validators'));
+    assert.ok(json.hasOwnProperty('vesting'));
   });
 
   it('should allow contracts to lock up ETH by signalling', async function () {
