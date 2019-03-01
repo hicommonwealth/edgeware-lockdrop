@@ -40,22 +40,41 @@ async function getLockdropLocks() {
 };
 
 async function lock(length, value, pubKey, isValidator=false) {
-    console.log(`Depositing ${value} into Lockdrop contract for ${length} days. Receiver: ${pubKey}`);
-    console.log("");
-    let txNonce = await web3.eth.getTransactionCount(ETH_ADDRESS);
-    const tx = new EthereumTx({
-      nonce: txNonce,
-      from: ETH_ADDRESS,
-      to: LOCKDROP_TESTNET_ADDRESS,
-      gas: 150000,
-      data: contract.methods.lock(length, pubKey, isValidator).encodeABI(),
-      value,
-    });
+  console.log(`Depositing ${value} into Lockdrop contract for ${length} days. Receiver: ${pubKey}`);
+  console.log("");
+  let txNonce = await web3.eth.getTransactionCount(ETH_ADDRESS);
+  const tx = new EthereumTx({
+    nonce: txNonce,
+    from: ETH_ADDRESS,
+    to: LOCKDROP_TESTNET_ADDRESS,
+    gas: 150000,
+    data: contract.methods.lock(length, pubKey, isValidator).encodeABI(),
+    value,
+  });
 
-    tx.sign(Buffer.from(ETH_PRIVATE_KEY, 'hex'));
-    var raw = '0x' + tx.serialize().toString('hex');
-    const txHash = await web3.eth.sendSignedTransaction(raw);
-    console.log(`Transaction send: ${txHash}`);
+  tx.sign(Buffer.from(ETH_PRIVATE_KEY, 'hex'));
+  var raw = '0x' + tx.serialize().toString('hex');
+  const txHash = await web3.eth.sendSignedTransaction(raw);
+  console.log(`Transaction send: ${txHash}`);
+}
+
+async function signal(addr, nonce, pubKey) {
+  console.log(`Signaling into Lockdrop contract from address ${signalAddr}. Receiver: ${pubKey}`);
+  console.log("");
+  let txNonce = await web3.eth.getTransactionCount(ETH_ADDRESS);
+  const tx = new EthereumTx({
+    nonce: txNonce,
+    from: ETH_ADDRESS,
+    to: LOCKDROP_TESTNET_ADDRESS,
+    gas: 150000,
+    data: contract.methods.signal(addr, nonce, pubKey).encodeABI(),
+    value,
+  }); 
+
+  tx.sign(Buffer.from(ETH_PRIVATE_KEY, 'hex'));
+  var raw = '0x' + tx.serialize().toString();
+  const txHash = await web3.eth.sendSignedTransaction(raw);
+  console.log(`Transaction send: ${txHash}`);
 }
 
 async function withdraw(lockContractAddress) {

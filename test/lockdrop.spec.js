@@ -163,7 +163,7 @@ contract('Lockdrop', (accounts) => {
     let { validatingLocks, unvalidatingLocks } = allocation;
 
     for (key in validatingLocks) {
-      assert.equal(validatingLocks[key].edgewareBalance, '500000000000000000000000000');
+      assert.equal(validatingLocks[key].edgewareBalance, toBN(totalAllocation).div(toBN(accounts.length)).toString());
     }
   });
 
@@ -180,7 +180,7 @@ contract('Lockdrop', (accounts) => {
     let { validatingLocks, unvalidatingLocks } = allocation;
 
     for (key in validatingLocks) {
-      assert.equal(validatingLocks[key].edgewareBalance, '500000000000000000000000000');
+      assert.equal(validatingLocks[key].edgewareBalance, toBN(totalAllocation).div(toBN(accounts.length)).toString());
     }
   });
 
@@ -199,9 +199,9 @@ contract('Lockdrop', (accounts) => {
 
     const totalAllocation = '5000000000000000000000000000';
     const allocation = await ldHelpers.calculateEffectiveLocks(lockdrop, totalAllocation);
-    let { validatingLocks, allLocks, total } = allocation;
+    let { validatingLocks, allEvents, total } = allocation;
     assert.equal(Object.keys(validatingLocks).length, 1);
-    assert.equal(Object.keys(allLocks).length, 1);
+    assert.equal(Object.keys(allEvents).length, 1);
   });
 
   it('should turn a lockdrop allocation into the substrate genesis format', async function () {
@@ -214,11 +214,11 @@ contract('Lockdrop', (accounts) => {
 
     const totalAllocation = '5000000000000000000000000000';
     const allocation = await ldHelpers.calculateEffectiveLocks(lockdrop, totalAllocation);
-    let { validatingLocks, allLocks, total } = allocation;
+    let { validatingLocks, allEvents, total } = allocation;
     assert.ok(toBN(total) > toBN(totalAllocation).sub(toBN(10)));
     let validators = ldHelpers.selectEdgewareValidators(validatingLocks, 10);
     assert(validators.length < 10);
-    let json = await ldHelpers.getEdgewareGenesisObjects(validators, allLocks);
+    let json = await ldHelpers.getEdgewareGenesisObjects(validators, allEvents);
     assert.ok(json.hasOwnProperty('balances'));
     assert.ok(json.hasOwnProperty('validators'));
   });
@@ -231,7 +231,7 @@ contract('Lockdrop', (accounts) => {
     const rlpEncoded = rlp.encode(input);
     const contractAddressLong = keccak('keccak256').update(rlpEncoded).digest('hex');
     const contractAddr = contractAddressLong.substring(24);
-    await lockdrop.signal(`0x${contractAddr}`, nonce, sender, true, { from: sender });
+    await lockdrop.signal(`0x${contractAddr}`, nonce, sender, { from: sender });
     const lockEvents = await ldHelpers.getSignals(lockdrop, contractAddr);
   });
 });

@@ -37,7 +37,7 @@ contract Lockdrop {
     uint256 public LOCK_END_TIME;
     // ETH locking events
     event Locked(address indexed owner, uint256 eth, Lock lockAddr, Term term, bytes edgewareKey, bool isValidator);
-    event Signaled(address indexed contractAddr, bytes edgewareKey, bool isValidator);
+    event Signaled(address indexed contractAddr, bytes edgewareKey);
     
     constructor(uint startTime) public {
         LOCK_START_TIME = startTime;
@@ -70,13 +70,13 @@ contract Lockdrop {
         revert();
     }
 
-    function signal(address contractAddr, uint32 nonce, bytes memory edgewareKey, bool isValidator)
+    function signal(address contractAddr, uint32 nonce, bytes memory edgewareKey)
         public
         didStart
         didNotEnd
         didCreate(contractAddr, msg.sender, nonce)
     {
-        emit Signaled(contractAddr, edgewareKey, isValidator);
+        emit Signaled(contractAddr, edgewareKey);
     }
 
     modifier didStart() {

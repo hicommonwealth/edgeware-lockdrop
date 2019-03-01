@@ -17,133 +17,153 @@ function getEffectiveValue(ethAmount, term) {
   }
 }
 
-module.exports = {
-  getLocks: async (lockdropContract, address) => {
-    return await lockdropContract.getPastEvents('Locked', {
-      fromBlock: 0,
-      toBlock: 'latest',
-      filter: {
-        owner: address,
-      }
-    });
-  },
-  getSignals: async (lockdropContract, address) => {
-    return await lockdropContract.getPastEvents('Signaled', {
-      fromBlock: 0,
-      toBlock: 'latest',
-      filter: {
-        contractAddr: address,
-      }
-    });
-  },
-  getTotalLockedBalance: async (lockdropContract) => {
-    const lockEvents = await lockdropContract.getPastEvents('Locked', {
-      fromBlock: 0,
-      toBlock: 'latest',
-    });
+async const getLocks = (lockdropContract, address) => {
+  return await lockdropContract.getPastEvents('Locked', {
+    fromBlock: 0,
+    toBlock: 'latest',
+    filter: {
+      owner: address,
+    }
+  });
+};
 
-    let totalAmountInETH = toBN(0);
-    lockEvents.forEach((event) => {
-      const data = event.returnValues;
-      totalAmountInETH = totalAmountInETH.add(toBN(data.eth));
-    });
+async const getSignals = (lockdropContract, address) => {
+  return await lockdropContract.getPastEvents('Signaled', {
+    fromBlock: 0,
+    toBlock: 'latest',
+    filter: {
+      contractAddr: address,
+    }
+  });
+};
 
-    return web3.utils.fromWei(totalAmountInETH.toString(), 'ether');
-  },
-  calculateEffectiveLocks: async (lockdropContract, totalAllocation) => {
-    let totalAmountInETH = toBN(0);
-    const allLocks = {};
-    const validatingLocks = {};
+async const getTotalLockedBalance = (lockdropContract) => {
+  const lockEvents = await lockdropContract.getPastEvents('Locked', {
+    fromBlock: 0,
+    toBlock: 'latest',
+  });
 
-    const lockEvents = await lockdropContract.getPastEvents('Locked', {
-      fromBlock: 0,
-      toBlock: 'latest',
-    });
+  let totalAmountInETH = toBN(0);
+  lockEvents.forEach((event) => {
+    const data = event.returnValues;
+    totalAmountInETH = totalAmountInETH.add(toBN(data.eth));
+  });
 
-    lockEvents.forEach((event) => {
-      const data = event.returnValues;
-      let value = getEffectiveValue(data.eth, data.term);
-      totalAmountInETH = totalAmountInETH.add(value);
+  return web3.utils.fromWei(totalAmountInETH.toString(), 'ether');
+};
 
-      if (data.isValidator) {
-        if (data.edgewareKey in validatingLocks) {
-          validatingLocks[data.edgewareKey] = {
-            lockAmt: toBN(data.eth).add(toBN(validatingLocks[data.edgewareKey].lockAmt)).toString(),
-            effectiveValue: toBN(validatingLocks[data.edgewareKey].effectiveValue).add(value).toString(),
-            lockAddrs: [ data.lockAddr, ...validatingLocks[data.edgewareKey].lockAddrs],
-          };
-        } else {
-          validatingLocks[data.edgewareKey] = {
-            lockAmt: toBN(data.eth).toString(),
-            effectiveValue: value.toString(),
-            lockAddrs: [data.lockAddr],
-          };
-        }
-      }
+async const calculateEffectiveLocks = (lockdropContract, totalAllocation) => {
+  let totalAmountInETH = toBN(0);
+  const allEvents = {};
+  const validatingLocks = {};
 
-      if (data.edgewareKey in allLocks) {
-        allLocks[data.edgewareKey] = {
-          lockAmt: toBN(data.eth).add(toBN(allLocks[data.edgewareKey].lockAmt)).toString(),
-          effectiveValue: toBN(allLocks[data.edgewareKey].effectiveValue).add(value).toString(),
-          lockAddrs: [ data.lockAddr, ...allLocks[data.edgewareKey].lockAddrs],
+  const lockEvents = await lockdropContract.getPastEvents('Locked', {
+    fromBlock: 0,
+    toBlock: 'latest',
+  });
+
+  lockEvents.forEach((event) => {
+    const data = event.returnValues;
+    let value = getEffectiveValue(data.eth, data.term);
+    totalAmountInETH = totalAmountInETH.add(value);
+
+    if (data.isValidator) {
+      if (data.edgewareKey in validatingLocks) {
+        validatingLocks[data.edgewareKey] = {
+          lockAmt: toBN(data.eth).add(toBN(validatingLocks[data.edgewareKey].lockAmt)).toString(),
+          effectiveValue: toBN(validatingLocks[data.edgewareKey].effectiveValue).add(value).toString(),
+          lockAddrs: [ data.lockAddr, ...validatingLocks[data.edgewareKey].lockAddrs],
         };
       } else {
-        allLocks[data.edgewareKey] = {
+        validatingLocks[data.edgewareKey] = {
           lockAmt: toBN(data.eth).toString(),
           effectiveValue: value.toString(),
           lockAddrs: [data.lockAddr],
         };
       }
-    });
-
-    let totalTokensIssued = toBN(0);
-    for (key in allLocks) {
-      let alloc = toBN(totalAllocation).mul(toBN(allLocks[key].effectiveValue)).div(totalAmountInETH).toString()
-      totalTokensIssued = totalTokensIssued.add(toBN(alloc));
-      allLocks[key] = {
-        ...allLocks[key],
-        edgewareBalance: alloc,
-      }
-
-      if (key in validatingLocks) {
-        validatingLocks[key] = {
-          ...validatingLocks[key],
-          edgewareBalance: alloc,
-        }        
-      }
     }
 
-    return { validatingLocks, allLocks, total: totalTokensIssued.toString() };
-  },
-  getLockStorage: async (lockAddress) => {
-    return Promise.all([0,1].map(v => {
-      return web3.eth.getStorageAt(lockAddress, v);
-    }))
-    .then(vals => {
-      return {
-        owner: vals[0],
-        unlockTime: web3.utils.hexToNumber(vals[1]),
+    if (data.edgewareKey in allEvents) {
+      allEvents[data.edgewareKey] = {
+        lockAmt: toBN(data.eth).add(toBN(allEvents[data.edgewareKey].lockAmt)).toString(),
+        effectiveValue: toBN(allEvents[data.edgewareKey].effectiveValue).add(value).toString(),
+        lockAddrs: [ data.lockAddr, ...allEvents[data.edgewareKey].lockAddrs],
       };
-    });
-  },
-  selectEdgewareValidators: (validatingLocks, num_of_validators) => {
-    const sortable = [];
-    for (var key in validatingLocks) {
-        sortable.push([key, toBN(validatingLocks[key].edgewareBalance)]);
+    } else {
+      allEvents[data.edgewareKey] = {
+        lockAmt: toBN(data.eth).toString(),
+        effectiveValue: value.toString(),
+        lockAddrs: [data.lockAddr],
+      };
     }
-    sortable.sort((a,b) => (a
-      [1] > b[1]) ? 1 : ((b[1] > a[1]) ? -1 : 0)); 
-    return sortable.slice(0, num_of_validators);
-  },
-  getEdgewareGenesisObjects: (validators, allLocks) => {
-    let balances = [];
-    for (var key in allLocks) {
-      balances.push([
-        allLocks[key].edgewareKey,
-        allLocks[key].edgewareBalance,
-      ]);
+  });
+
+  const signalEvents = await lockdropContract.getPastEvents('Signaled', {
+    fromBlock: 0,
+    toBlock: 'latest',
+  });
+
+  let totalTokensIssued = toBN(0);
+  for (key in allEvents) {
+    let alloc = toBN(totalAllocation).mul(toBN(allEvents[key].effectiveValue)).div(totalAmountInETH).toString()
+    totalTokensIssued = totalTokensIssued.add(toBN(alloc));
+    allEvents[key] = {
+      ...allEvents[key],
+      edgewareBalance: alloc,
     }
 
-    return { balances: balances, validators: validators };
-  },
+    if (key in validatingLocks) {
+      validatingLocks[key] = {
+        ...validatingLocks[key],
+        edgewareBalance: alloc,
+      }        
+    }
+  }
+
+  return { validatingLocks, allEvents, total: totalTokensIssued.toString() };
+};
+
+async const getLockStorage = (lockAddress) => {
+  return Promise.all([0,1].map(v => {
+    return web3.eth.getStorageAt(lockAddress, v);
+  }))
+  .then(vals => {
+    return {
+      owner: vals[0],
+      unlockTime: web3.utils.hexToNumber(vals[1]),
+    };
+  });
+};
+
+const selectEdgewareValidators = (validatingLocks, num_of_validators) => {
+  const sortable = [];
+  for (var key in validatingLocks) {
+      sortable.push([key, toBN(validatingLocks[key].edgewareBalance)]);
+  }
+  sortable.sort((a,b) => (a
+    [1] > b[1]) ? 1 : ((b[1] > a[1]) ? -1 : 0)); 
+  return sortable.slice(0, num_of_validators);
+};
+
+const getEdgewareGenesisObjects = (validators, allEvents) => {
+  let balances = [];
+  for (var key in allLocks) {
+    balances.push([
+      allLocks[key].edgewareKey,
+      allLocks[key].edgewareBalance,
+    ]);
+  }
+
+  return { balances: balances, validators: validators };
+};
+
+
+module.exports = {
+  getLocks,
+  getSignals,
+  getTotalLockedBalance,
+  calculateEffectiveLocks,
+  getLockStorage,
+  selectEdgewareValidators,
+  getEdgewareGenesisObjects,
 };
