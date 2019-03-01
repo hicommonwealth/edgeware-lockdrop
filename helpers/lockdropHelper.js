@@ -17,7 +17,7 @@ function getEffectiveValue(ethAmount, term) {
   }
 }
 
-async const getLocks = (lockdropContract, address) => {
+const getLocks = async (lockdropContract, address) => {
   return await lockdropContract.getPastEvents('Locked', {
     fromBlock: 0,
     toBlock: 'latest',
@@ -27,7 +27,7 @@ async const getLocks = (lockdropContract, address) => {
   });
 };
 
-async const getSignals = (lockdropContract, address) => {
+const getSignals = async (lockdropContract, address) => {
   return await lockdropContract.getPastEvents('Signaled', {
     fromBlock: 0,
     toBlock: 'latest',
@@ -37,7 +37,7 @@ async const getSignals = (lockdropContract, address) => {
   });
 };
 
-async const getTotalLockedBalance = (lockdropContract) => {
+const getTotalLockedBalance = async (lockdropContract) => {
   const lockEvents = await lockdropContract.getPastEvents('Locked', {
     fromBlock: 0,
     toBlock: 'latest',
@@ -52,7 +52,7 @@ async const getTotalLockedBalance = (lockdropContract) => {
   return web3.utils.fromWei(totalAmountInETH.toString(), 'ether');
 };
 
-async const calculateEffectiveLocks = (lockdropContract, totalAllocation, blockNumber = null) => {
+const calculateEffectiveLocks = async (lockdropContract, totalAllocation, blockNumber = null) => {
   let totalAmountInETH = toBN(0);
   const allEvents = {};
   const validatingLocks = {};
@@ -98,39 +98,6 @@ async const calculateEffectiveLocks = (lockdropContract, totalAllocation, blockN
     }
   });
 
-  const signalEvents = await lockdropContract.getPastEvents('Signaled', {
-    fromBlock: 0,
-    toBlock: 'latest',
-  });
-
-  signalEvents.forEach((event) => {
-    const data = event.returnValues;
-    // Get balance at block that lockdrop ends
-    let balance;
-    if (blockNumber) {
-      balance = await web3.eth.getBalance(data.contractAddr, blockNumber);
-    } else {
-      balance = await web3.eth.getBalance(data.contractAddr);
-    }
-    
-    // Signalers have 0 term
-    let value = getEffectiveValue(balance, '0');
-    totalAmountInETH = totalAmountInETH.add(value);
-    if (data.edgewareKey in allEvents && allEvents[data.edgewareKey].hasOwnProperty('signalAmt')) {
-      allEvents[data.edgewareKey] = {
-        signalAmt: toBN(data.eth).add(toBN(allEvents[data.edgewareKey].signalAmt)).toString(),
-        signalEffectiveValue: toBN(allEvents[data.edgewareKey].signalEffectiveValue).add(value).toString(),
-        ...allEvents[data.edgewareKey],
-      };
-    } else {
-      allEvents[data.edgewareKey] = {
-        signalAmt: toBN(data.eth).toString(),
-        signalEffectiveValue: value.toString(),
-        ...allEvents[data.edgewareKey],
-      };
-    }
-  });
-
   let totalTokensIssued = toBN(0);
   for (key in allEvents) {
     let alloc = toBN(totalAllocation).mul(toBN(allEvents[key].effectiveValue)).div(totalAmountInETH).toString()
@@ -151,7 +118,44 @@ async const calculateEffectiveLocks = (lockdropContract, totalAllocation, blockN
   return { validatingLocks, allEvents, total: totalTokensIssued.toString() };
 };
 
-async const getLockStorage = (lockAddress) => {
+const getEffectiveSignals = async (lockdropContract) => {
+  let signalRecords = {};
+
+  const signalEvents = await lockdropContract.getPastEvents('Signaled', {
+    fromBlock: 0,
+    toBlock: 'latest',
+  });
+
+  signalEvents.forEach(async (event) => {
+    const data = event.returnValues;
+    // Get balance at block that lockdrop ends
+    let balance;
+    if (blockNumber) {
+      balance = await web3.eth.getBalance(data.contractAddr, blockNumber);
+    } else {
+      balance = await web3.eth.getBalance(data.contractAddr);
+    }
+    
+    // Signalers have 0 term
+    let value = getEffectiveValue(balance, '0');
+    totalAmountInETH = totalAmountInETH.add(value);
+    if (data.edgewareKey in signalRecords && signalRecords[data.edgewareKey].hasOwnProperty('signalAmt')) {
+      signalRecords[data.edgewareKey] = {
+        signalAmt: toBN(data.eth).add(toBN(signalRecords[data.edgewareKey].signalAmt)).toString(),
+        signalEffectiveValue: toBN(signalRecords[data.edgewareKey].signalEffectiveValue).add(value).toString(),
+        ...signalRecords[data.edgewareKey],
+      };
+    } else {
+      signalRecords[data.edgewareKey] = {
+        signalAmt: toBN(data.eth).toString(),
+        signalEffectiveValue: value.toString(),
+        ...signalRecords[data.edgewareKey],
+      };
+    }
+  });
+}
+
+const getLockStorage = async (lockAddress) => {
   return Promise.all([0,1].map(v => {
     return web3.eth.getStorageAt(lockAddress, v);
   }))
@@ -175,10 +179,10 @@ const selectEdgewareValidators = (validatingLocks, num_of_validators) => {
 
 const getEdgewareGenesisObjects = (validators, allEvents) => {
   let balances = [];
-  for (var key in allLocks) {
+  for (var key in allEvents) {
     balances.push([
-      allLocks[key].edgewareKey,
-      allLocks[key].edgewareBalance,
+      allEvents[key].edgewareKey,
+      allEvents[key].edgewareBalance,
     ]);
   }
 
