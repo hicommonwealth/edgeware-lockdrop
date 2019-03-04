@@ -6,14 +6,14 @@ function getEffectiveValue(ethAmount, term) {
     // three month term yields no bonus
     return toBN(ethAmount);
   } else if (term == '1') {
-    // six month term yields 5% bonus
-    return toBN(ethAmount).mul(toBN(105)).div(toBN(100));
+    // six month term yields 10% bonus
+    return toBN(ethAmount).mul(toBN(110)).div(toBN(100));
   } else if (term == '2') {
     // twelve month term yields 40% bonus
     return toBN(ethAmount).mul(toBN(140)).div(toBN(100));
   } else if (term == 'signaling') {
-    // 60% deduction
-    return toBN(ethAmount).mul(toBN(40)).div(toBN(100));
+    // 40% deduction
+    return toBN(ethAmount).mul(60).div(toBN(100));
   } else {
     // invalid term
     return toBN(0);
