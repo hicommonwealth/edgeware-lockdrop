@@ -84,8 +84,8 @@ contract Lockdrop {
      * @param      nonce         The transaction nonce of the creator of the contract
      * @param      edgewareKey   The bytes representation of the target edgeware key
      */
-    function signal(address contractAddr, uint32 nonce, bytes memory edgewareKey)
-        public
+    function signal(address contractAddr, uint32 nonce, bytes calldata edgewareKey)
+        external
         didStart
         didNotEnd
         didCreate(contractAddr, msg.sender, nonce)
