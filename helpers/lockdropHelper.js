@@ -13,7 +13,7 @@ function getEffectiveValue(ethAmount, term) {
     return toBN(ethAmount).mul(toBN(140)).div(toBN(100));
   } else if (term == 'signaling') {
     // 60% deduction
-    return toBN(ethAmount).mul(40).div(toBN(100));
+    return toBN(ethAmount).mul(toBN(40)).div(toBN(100));
   } else {
     // invalid term
     return toBN(0);

@@ -12,6 +12,9 @@ contract Lock {
         }
     }
     
+    /**
+     * @dev        Withdraw function once timestamp has passed unlock time
+     */
     function () external payable { // payable so solidity doesn't add unnecessary logic
         assembly {
             switch gt(timestamp, sload(0x01))
@@ -43,6 +46,12 @@ contract Lockdrop {
         LOCK_END_TIME = startTime + LOCK_DROP_PERIOD;
     }
 
+    /**
+     * @dev        Locks up the value sent to contract in a new Lock
+     * @param      term         The length of the lock up
+     * @param      edgewareKey  The bytes representation of the target edgeware key
+     * @param      isValidator  Indicates if sender wishes to be a validator
+     */
     function lock(Term term, bytes calldata edgewareKey, bool isValidator)
         external
         payable
@@ -69,6 +78,12 @@ contract Lockdrop {
         revert();
     }
 
+    /**
+     * @dev        Signals a contract's (or address's) balance decided after lock period
+     * @param      contractAddr  The contract address from which to signal the balance of
+     * @param      nonce         The transaction nonce of the creator of the contract
+     * @param      edgewareKey   The bytes representation of the target edgeware key
+     */
     function signal(address contractAddr, uint32 nonce, bytes memory edgewareKey)
         public
         didStart
@@ -78,16 +93,27 @@ contract Lockdrop {
         emit Signaled(contractAddr, edgewareKey);
     }
 
+    /**
+     * @dev        Ensures the lockdrop has started
+     */
     modifier didStart() {
         require(now >= LOCK_START_TIME);
         _;
     }
 
+    /**
+     * @dev        Ensures the lockdrop has not ended
+     */
     modifier didNotEnd() {
         require(now <= LOCK_END_TIME);
         _;
     }
 
+    /**
+     * @dev        Rebuilds the contract address from a normal address and transaction nonce
+     * @param      _origin  The non-contract address derived from a user's public key
+     * @param      _nonce   The transaction nonce from which to generate a contract address
+     */
     function addressFrom(address _origin, uint32 _nonce) public pure returns (address) {
         if(_nonce == 0x00)     return address(uint160(uint256(keccak256(abi.encodePacked(byte(0xd6), byte(0x94), _origin, byte(0x80))))));
         if(_nonce <= 0x7f)     return address(uint160(uint256(keccak256(abi.encodePacked(byte(0xd6), byte(0x94), _origin, uint8(_nonce))))));
@@ -97,6 +123,12 @@ contract Lockdrop {
         return address(uint160(uint256(keccak256(abi.encodePacked(byte(0xda), byte(0x94), _origin, byte(0x84), uint32(_nonce)))))); // more than 2^32 nonces not realistic
     }
 
+    /**
+     * @dev        Ensures the target address was created by a parent at some nonce
+     * @param      target  The target contract address (or trivially the parent)
+     * @param      parent  The creator of the alleged contract address
+     * @param      nonce   The creator's tx nonce at the time of the contract creation
+     */
     modifier didCreate(address target, address parent, uint32 nonce) {
         // Trivially let senders "create" themselves
         if (target == parent) {
