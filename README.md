@@ -3,7 +3,7 @@ This repo contains the smart contracts and scripts for the Edgeware lockdrop. Th
 
 ## Usage
 ```
-yarn add global truffle
+yarn global add truffle
 yarn install
 ```
 To test, use `ganache-cli` and `truffle`
