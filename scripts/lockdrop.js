@@ -15,14 +15,14 @@ const contract = new web3.eth.Contract(LOCKDROP_JSON.abi, LOCKDROP_TESTNET_ADDRE
 
 program
   .version('0.1.0')
-  .option('-l, --lockers', 'lockers')
   .option('-b, --balance', 'balance')
-  .option('-d, --deposit', 'deposit')
-  .option('-w, --withdraw', 'withdraw')
-  .option('--ending', 'ending')
-  .option('--lockLength <length>', 'lockLength')
+  .option('-l, --lock', 'lock')
+  .option('-u, --unclock', 'unclock')
+  .option('--lockers', 'lockers')
+  .option('--ending', 'poll when the lockdrop lock period is ending')
+  .option('--lockLength <length>', 'lockLength - (3, 6, or 12)')
   .option('--lockValue <value>', 'lockValue')
-  .option('--pubKey <key>', 'pubKey')
+  .option('--pubKey <key>', 'pubKey in hex')
   .option('--isValidator', 'isValidator')
   .parse(process.argv);
 
@@ -32,7 +32,7 @@ async function getCurrentTimestamp() {
 }
 
 async function getLockdropLocks() {
-  console.log('Fetching Lockdrop locked deposits...');
+  console.log('Fetching Lockdrop locked locks...');
   console.log("");
   const allocation = await ldHelpers.calculateEffectiveLocks(contract, '5000000000000000000000000000');
   console.log(allocation);
@@ -40,8 +40,14 @@ async function getLockdropLocks() {
 };
 
 async function lock(length, value, pubKey, isValidator=false) {
-  console.log(`Depositing ${value} into Lockdrop contract for ${length} days. Receiver: ${pubKey}`);
+  if (length != "3" || length != "6" || length != "12") {
+    console.log("Invalid length, must pass in 3, 6, 12");
+    return;
+  }
+
+  console.log(`locking ${value} into Lockdrop contract for ${length} days. Receiver: ${pubKey}`);
   console.log("");
+  let lockLength = (length == "3") ? 3 : (length == "6") ? 6 : 12;
   let txNonce = await web3.eth.getTransactionCount(ETH_ADDRESS);
   const tx = new EthereumTx({
     nonce: txNonce,
@@ -77,8 +83,8 @@ async function signal(addr, nonce, pubKey) {
   console.log(`Transaction send: ${txHash}`);
 }
 
-async function withdraw(lockContractAddress) {
-  console.log(`Withdrawing deposit for account: ${coinbase}`);
+async function unlock(lockContractAddress) {
+  console.log(`Unlocking lock for account: ${coinbase}`);
   console.log("");
   try {
     let txNonce = await web3.eth.getTransactionCount(ETH_ADDRESS);
@@ -114,13 +120,13 @@ if (program.lockers) getLockdropLocks();
 
 if (program.balance) getBalance();
 
-if (program.deposit) {
+if (program.lock) {
   if (!program.lockLength || !program.lockValue || !program.pubKey) {
     throw new Error('Please input a length and value using --lockLength, --lockValue and --pubKey');
   }
-  lock(program.lockLength, program.lockValue, program.pubKey, program.isValidator);
+  lock(program.lockLength, program.lockValue, program.pubKey, (!!program.isValidator));
 }
 
-if (program.withdraw) withdraw();
+if (program.unlock) unlock();
 
 if (program.ending) getEnding();
