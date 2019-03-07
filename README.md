@@ -15,6 +15,7 @@ To use the script `/scripts/lockdrop.js`, ensure you have a local Ethereum conne
 node ./scripts/lockdrop.js 
 ```
 ## API
+```
 Usage: lockdrop [options]
 
 Options:
@@ -29,9 +30,7 @@ Options:
   --pubKey <key>         pubKey in hex
   --isValidator          isValidator
   -h, --help             output usage information
-
-
-#### Lock = function(Term term, bytes edgewareKey, bool isValidator)
+```
 
 
 ## Edgeware blockchain
