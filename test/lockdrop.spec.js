@@ -236,4 +236,18 @@ contract('Lockdrop', (accounts) => {
     await lockdrop.signal(`0x${contractAddr}`, nonce, sender, { from: sender });
     const lockEvents = await ldHelpers.getSignals(lockdrop, contractAddr);
   });
+
+  it.only('ensure the contract address matches JS RLP script', async function () {
+    const sender = accounts[0];
+    const nonce = (await web3.eth.getTransactionCount(sender));
+    const nonceHex = `0x${nonce.toString(16)}`;
+    const input = [ sender, nonce ];
+    const rlpEncoded = rlp.encode(input);
+    const contractAddressLong = keccak('keccak256').update(rlpEncoded).digest('hex');
+    const contractAddr = contractAddressLong.substring(24);
+
+    let time = await utility.getCurrentTimestamp(web3);
+    let tempLd = await Lockdrop.new(time);
+    assert.equal(web3.utils.toBN(tempLd.address).toString(), web3.utils.toBN(contractAddr).toString());
+  });
 });
