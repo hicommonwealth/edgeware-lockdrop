@@ -10,9 +10,10 @@ To test, use `ganache-cli` and `truffle`
 ```
 truffle test
 ```
-To use the script `/scripts/lockdrop.js`, ensure you have a local Ethereum connection
+To use the script `/scripts/lockdrop.js`, compile, and ensure you have a local Ethereum connection
 ```
-node ./scripts/lockdrop.js 
+truffle compile
+node ./scripts/lockdrop.js --help
 ```
 ## API
 ```
