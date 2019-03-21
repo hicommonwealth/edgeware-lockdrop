@@ -5,54 +5,57 @@ const EthereumTx = require('ethereumjs-tx')
 const fs = require('fs');
 const ldHelpers = require("../helpers/lockdropHelper.js");
 
-const LOCKDROP_TESTNET_ADDRESS = "0xfEdf8Cada80F6311d193cB8460A7b2766BdC9459";
 const LOCKDROP_JSON = JSON.parse(fs.readFileSync('./build/contracts/Lockdrop.json').toString());
 const ETH_PRIVATE_KEY = process.env.ETH_PRIVATE_KEY;
 const ETH_ADDRESS = process.env.ETH_ADDRESS;
-
-const web3 = new Web3(new Web3.providers.HttpProvider("http://localhost:8545"));
-const contract = new web3.eth.Contract(LOCKDROP_JSON.abi, LOCKDROP_TESTNET_ADDRESS);
+const LOCALHOST_URL = 'http://localhost:8545';
 
 program
   .version('0.1.0')
-  .option('-b, --balance', 'balance')
-  .option('-l, --lock', 'lock')
-  .option('-u, --unclock', 'unclock')
-  .option('--lockers', 'lockers')
-  .option('--ending', 'poll when the lockdrop lock period is ending')
-  .option('--lockLength <length>', 'lockLength - (3, 6, or 12)')
-  .option('--lockValue <value>', 'lockValue')
-  .option('--pubKey <key>', 'pubKey in hex')
-  .option('--isValidator', 'isValidator')
+  .option('-b, --balance', 'Get the total balance across all locks')
+  .option('-l, --lock', 'Lock ETH with the lockdrop')
+  .option('-s, --signal <signalingAddress>', 'Signal a contract balance in the lockdrop')
+  .option('-n, --nonce <nonce>', 'Transaction nonce that created a specific contract address')
+  .option('-u, --unlock', 'Unlock ETH from a specific lock contract')
+  .option('-r, --remoteUrl <url>', 'The remote URL of an Ethereum node (defaults to localhost:8545')
+  .option('--lockContractAddress <addr>', 'The Ethereum address for a lock contract')
+  .option('--lockdropContractAddress <addr>', 'lockers')
+  .option('--lockers', 'Get the allocation for the current set of lockers')
+  .option('--ending', 'Get the remaining time of the lockdrop')
+  .option('--lockLength <length>', 'The desired lock length - (3, 6, or 12)')
+  .option('--lockValue <value>', 'The amount of Ether denominated in WEI')
+  .option('--pubKey <key>', 'Edgeware ED25519 pubKey in hex')
+  .option('--isValidator', 'A boolean flag indicating intent to be a validator')
   .parse(process.argv);
 
-async function getCurrentTimestamp() {
+async function getCurrentTimestamp(remoteUrl=LOCALHOST_URL) {
+  const web3 = new Web3(new Web3.providers.HttpProvider(remoteUrl));
   const block = await web3.eth.getBlock("latest");
   return block.timestamp;
 }
 
-async function getLockdropLocks() {
+async function getLockdropLocks(lockdropContractAddress, remoteUrl=LOCALHOST_URL, totalIssuance='5000000000000000000000000000') {
   console.log('Fetching Lockdrop locked locks...');
   console.log("");
-  const allocation = await ldHelpers.calculateEffectiveLocks(contract, '5000000000000000000000000000');
+  const web3 = new Web3(new Web3.providers.HttpProvider(remoteUrl));
+  const contract = new web3.eth.Contract(LOCKDROP_JSON.abi, lockdropContractAddress);
+  const allocation = await ldHelpers.calculateEffectiveLocks(contract, totalIssuance);
   console.log(allocation);
   return allocation;
 };
 
-async function lock(length, value, pubKey, isValidator=false) {
-  if (length != "3" || length != "6" || length != "12") {
-    console.log("Invalid length, must pass in 3, 6, 12");
-    return;
-  }
-
+async function lock(lockdropAddress, length, value, pubKey, isValidator=false, remoteUrl=LOCALHOST_URL) {
+  if (length != "3" || length != "6" || length != "12") throw new Error('Invalid length, must pass in 3, 6, 12');
   console.log(`locking ${value} into Lockdrop contract for ${length} days. Receiver: ${pubKey}`);
   console.log("");
+  const web3 = new Web3(new Web3.providers.HttpProvider(remoteUrl));
+  const contract = new web3.eth.Contract(LOCKDROP_JSON.abi, lockdropContractAddress);
   let lockLength = (length == "3") ? 3 : (length == "6") ? 6 : 12;
   let txNonce = await web3.eth.getTransactionCount(ETH_ADDRESS);
   const tx = new EthereumTx({
     nonce: txNonce,
     from: ETH_ADDRESS,
-    to: LOCKDROP_TESTNET_ADDRESS,
+    to: lockdropAddress,
     gas: 150000,
     data: contract.methods.lock(length, pubKey, isValidator).encodeABI(),
     value,
@@ -64,16 +67,18 @@ async function lock(length, value, pubKey, isValidator=false) {
   console.log(`Transaction send: ${txHash}`);
 }
 
-async function signal(addr, nonce, pubKey) {
+async function signal(lockdropAddress, signalingAddress, nonce, pubKey, remoteUrl=LOCALHOST_URL) {
   console.log(`Signaling into Lockdrop contract from address ${signalAddr}. Receiver: ${pubKey}`);
   console.log("");
+  const web3 = new Web3(new Web3.providers.HttpProvider(remoteUrl));
+  const contract = new web3.eth.Contract(LOCKDROP_JSON.abi, lockdropContractAddress);
   let txNonce = await web3.eth.getTransactionCount(ETH_ADDRESS);
   const tx = new EthereumTx({
     nonce: txNonce,
     from: ETH_ADDRESS,
-    to: LOCKDROP_TESTNET_ADDRESS,
+    to: lockdropAddress,
     gas: 150000,
-    data: contract.methods.signal(addr, nonce, pubKey).encodeABI(),
+    data: contract.methods.signal(signalingAddress, nonce, pubKey).encodeABI(),
     value,
   }); 
 
@@ -83,9 +88,11 @@ async function signal(addr, nonce, pubKey) {
   console.log(`Transaction send: ${txHash}`);
 }
 
-async function unlock(lockContractAddress) {
+async function unlock(lockContractAddress, remoteUrl=LOCALHOST_URL) {
   console.log(`Unlocking lock for account: ${coinbase}`);
   console.log("");
+  const web3 = new Web3(new Web3.providers.HttpProvider(remoteUrl));
+  const contract = new web3.eth.Contract(LOCKDROP_JSON.abi, lockdropContractAddress);
   try {
     let txNonce = await web3.eth.getTransactionCount(ETH_ADDRESS);
     const tx = new EthereumTx({
@@ -103,30 +110,49 @@ async function unlock(lockContractAddress) {
   }
 }
 
-async function getBalance() {
+async function getBalance(lockdropContractAddress, remoteUrl=LOCALHOST_URL) {
   console.log('Fetching Lockdrop balance...');
   console.log("");
+  const web3 = new Web3(new Web3.providers.HttpProvider(remoteUrl));
+  const contract = new web3.eth.Contract(LOCKDROP_JSON.abi, lockdropContractAddress);
   return await ldHelpers.getTotalLockedBalance(contract);
 };
 
-async function getEnding() {
+async function getEnding(lockdropContractAddress, remoteUrl=LOCALHOST_URL) {
+  const web3 = new Web3(new Web3.providers.HttpProvider(remoteUrl));
+  const contract = new web3.eth.Contract(LOCKDROP_JSON.abi, lockdropContractAddress);
   const coinbase = await web3.eth.getCoinbase();
   const ending = await contract.methods.LOCK_END_TIME().call({from: coinbase});
-  const now = await getCurrentTimestamp();
+  const now = await getCurrentTimestamp(remoteUrl);
   console.log(`Ending in ${(ending - now) / 60} minutes`);
 }
 
-if (program.lockers) getLockdropLocks();
+if (!program.lockdropContractAddress) {
+  throw new Error('Input a contract address for the Lockdrop contract');
+}
 
-if (program.balance) getBalance();
+if (program.lockers) getLockdropLocks(program.lockdropContractAddress, program.remoteUrl);
+if (program.balance) getBalance(program.lockdropContractAddress, program.remoteUrl);
+if (program.ending) getEnding(program.lockdropContractAddress, program.remoteUrl);
 
 if (program.lock) {
   if (!program.lockLength || !program.lockValue || !program.pubKey) {
     throw new Error('Please input a length and value using --lockLength, --lockValue and --pubKey');
   }
-  lock(program.lockLength, program.lockValue, program.pubKey, (!!program.isValidator));
+  lock(program.lockdropContractAddress, program.lockLength, program.lockValue, program.pubKey, (!!program.isValidator), program.remoteUrl);
 }
 
-if (program.unlock) unlock();
+if (program.signal) {
+  if (!program.nonce || !program.pubKey) {
+    throw new Error('Please input a transaction nonce for the sending account with --nonce and --pubKey');
+  }
+  signal(program.lockdropContractAddress, program.signal, program.nonce, program.pubKey, program.remoteUrl);
+}
 
-if (program.ending) getEnding();
+if (program.unlock) {
+  if (!program.lockContractAddress) {
+    throw new Error('Please input a lock contract address to unlock from with --lockContractAddress');
+  } else {
+    unlock(program.lockContractAddress)
+  }
+}

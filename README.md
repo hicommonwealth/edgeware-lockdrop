@@ -10,7 +10,7 @@ To test, use `ganache-cli` and `truffle`
 ```
 truffle test
 ```
-To use the script `/scripts/lockdrop.js`, ensure you have a local Ethereum connection
+To use the script `/scripts/lockdrop.js`:
 ```
 node ./scripts/lockdrop.js 
 ```
@@ -19,17 +19,19 @@ node ./scripts/lockdrop.js
 Usage: lockdrop [options]
 
 Options:
-  -V, --version          output the version number
-  -b, --balance          balance
-  -l, --lock             lock
-  -u, --unclock          unclock
-  --lockers              lockers
-  --ending               poll when the lockdrop lock period is ending
-  --lockLength <length>  lockLength - (3, 6, or 12)
-  --lockValue <value>    lockValue
-  --pubKey <key>         pubKey in hex
-  --isValidator          isValidator
-  -h, --help             output usage information
+  -V, --version                     output the version number
+  -b, --balance                     Get the total balance across all locks
+  -l, --lock                        Lock ETH with the lockdrop
+  -u, --unlock                      Unlock ETH from a specific lock contract
+  --lockContractAddress <addr>      The Ethereum address for a lock contract
+  --lockdropContractAddress <addr>  lockers
+  --lockers                         Get the allocation for the current set of lockers
+  --ending                          Get the remaining time of the lockdrop
+  --lockLength <length>             The desired lock length - (3, 6, or 12)
+  --lockValue <value>               The amount of Ether denominated in WEI
+  --pubKey <key>                    Edgeware ED25519 pubKey in hex
+  --isValidator                     A boolean flag indicating intent to be a validator
+  -h, --help                        output usage information
 ```
 
 
