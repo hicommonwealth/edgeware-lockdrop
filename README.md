@@ -12,7 +12,8 @@ truffle test
 ```
 To use the script `/scripts/lockdrop.js`:
 ```
-node ./scripts/lockdrop.js 
+truffle compile
+node ./scripts/lockdrop.js --help
 ```
 ## API
 ```
