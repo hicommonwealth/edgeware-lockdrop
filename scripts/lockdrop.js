@@ -17,7 +17,7 @@ program
   .option('-s, --signal <signalingAddress>', 'Signal a contract balance in the lockdrop')
   .option('-n, --nonce <nonce>', 'Transaction nonce that created a specific contract address')
   .option('-u, --unlock', 'Unlock ETH from a specific lock contract')
-  .option('-r, --remoteUrl <url>', 'The remote URL of an Ethereum node (defaults to localhost:8545')
+  .option('-r, --remoteUrl <url>', 'The remote URL of an Ethereum node (defaults to localhost:8545)')
   .option('--lockContractAddress <addr>', 'The Ethereum address for a lock contract')
   .option('--lockdropContractAddress <addr>', 'lockers')
   .option('--lockers', 'Get the allocation for the current set of lockers')

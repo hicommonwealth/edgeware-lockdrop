@@ -10,7 +10,11 @@ To test, use `ganache-cli` and `truffle`
 ```
 truffle test
 ```
-To use the script `/scripts/lockdrop.js`:
+To deploy locally against `ganache-cli`:
+```
+truffle deploy
+```
+To use the script `/scripts/lockdrop.js`, ensure you've deployed to the respective network:
 ```
 truffle compile
 node ./scripts/lockdrop.js --help
@@ -23,7 +27,10 @@ Options:
   -V, --version                     output the version number
   -b, --balance                     Get the total balance across all locks
   -l, --lock                        Lock ETH with the lockdrop
+  -s, --signal <signalingAddress>   Signal a contract balance in the lockdrop
+  -n, --nonce <nonce>               Transaction nonce that created a specific contract address
   -u, --unlock                      Unlock ETH from a specific lock contract
+  -r, --remoteUrl <url>             The remote URL of an Ethereum node (defaults to localhost:8545)
   --lockContractAddress <addr>      The Ethereum address for a lock contract
   --lockdropContractAddress <addr>  lockers
   --lockers                         Get the allocation for the current set of lockers
@@ -33,6 +40,7 @@ Options:
   --pubKey <key>                    Edgeware ED25519 pubKey in hex
   --isValidator                     A boolean flag indicating intent to be a validator
   -h, --help                        output usage information
+
 ```
 
 
