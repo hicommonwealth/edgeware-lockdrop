@@ -237,7 +237,7 @@ contract('Lockdrop', (accounts) => {
     const lockEvents = await ldHelpers.getSignals(lockdrop, contractAddr);
   });
 
-  it.only('ensure the contract address matches JS RLP script', async function () {
+  it('ensure the contract address matches JS RLP script', async function () {
     const sender = accounts[0];
     const nonce = (await web3.eth.getTransactionCount(sender));
     const nonceHex = `0x${nonce.toString(16)}`;
