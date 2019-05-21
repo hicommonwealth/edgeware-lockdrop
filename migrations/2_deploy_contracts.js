@@ -1,9 +1,12 @@
+const Lockdrop = artifacts.require("Lockdrop.sol");
 const utility = require('../helpers/util');
-const Lockdrop = artifacts.require("./Lockdrop.sol");
-const Web3 = require('web3');
-let web3 = new Web3(new Web3.providers.HttpProvider("http://localhost:8545"));
+const JUNE_1ST_UNIX_TIME = 1559347200;
 
 module.exports = async function(deployer, network, accounts) {
-  let time = await utility.getCurrentTimestamp(web3);
-  await deployer.deploy(Lockdrop, time);
+  if (network === 'ropsten') {
+    let time = await utility.getCurrentTimestamp(web3);
+    await deployer.deploy(Lockdrop, time);
+  } else {
+    await deployer.deploy(Lockdrop, JUNE_1ST_UNIX_TIME);
+  }
 };

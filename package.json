@@ -1,11 +1,13 @@
 {
   "dependencies": {
     "bluebird": "^3.5.3",
+    "bs58": "^4.0.1",
     "dotenv": "^6.2.0",
     "ethereumjs-tx": "^1.3.7",
     "keccak": "^2.0.0",
     "openzeppelin-solidity": "^2.1.2",
     "rlp": "^2.2.2",
+    "truffle-hdwallet-provider": "^1.0.8",
     "web3": "^1.0.0-beta.37"
   }
 }
