@@ -73,16 +73,16 @@ contract('Lockdrop-2', (accounts) => {
     lockdrop = await Lockdrop.new(time);
   });
 
-  it('should ensure base58 encodings are valid to submit', async function () {
+  it('should ensure one can submit multiple public keys', async function () {
     await Promise.all(accounts.map(async (a, inx) => {
-      return await lockdrop.lock(TWELVE_MONTHS, `0x${bs58.decode(fixtures[inx].base58Address).toString('hex')}`, (Math.random() > 0.5) ? true : false, {
+      return await lockdrop.lock(TWELVE_MONTHS, `0x${fixtures[inx].pubKey.slice(2)}${fixtures[inx].pubKey.slice(2)}${fixtures[inx].pubKey.slice(2)}`, (Math.random() > 0.5) ? true : false, {
         from: a,
         value: web3.utils.toWei(`${inx + 1}`, 'ether'),
       });
     }));
 
     await Promise.all(accounts.map(async (a, inx) => {
-      return await lockdrop.lock(TWELVE_MONTHS, `0x${bs58.decode(fixtures[inx].base58Address).toString('hex')}`, (Math.random() > 0.5) ? true : false, {
+      return await lockdrop.lock(TWELVE_MONTHS, `0x${fixtures[inx].pubKey.slice(2)}${fixtures[inx].pubKey.slice(2)}${fixtures[inx].pubKey.slice(2)}`, (Math.random() > 0.5) ? true : false, {
         from: a,
         value: web3.utils.toWei(`${inx + 1}`, 'ether'),
       });
@@ -104,7 +104,7 @@ contract('Lockdrop-2', (accounts) => {
     
     let sum = toBN(0);
     json.balances.forEach((elt, inx) => {
-      assert.equal(elt[0], fixtures[inx].base58Address);
+      assert.equal(elt[0], bs58.encode(new Buffer(`${fixtures[inx].pubKey.slice(2)}${fixtures[inx].pubKey.slice(2)}${fixtures[inx].pubKey.slice(2)}`, 'hex')));
       sum = sum.add(toBN(elt[1]));
     });
 

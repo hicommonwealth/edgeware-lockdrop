@@ -206,6 +206,7 @@ const getEdgewareBalanceObjects = (locks, signals, totalAllocation, totalEffecti
   for (var key in locks) {
     if (key in signals) {
       // if key also signaled ETH, add immediate effective signal value to the locked value
+      // FIXME: Proper base58 encoding once we receive future network ID
       const summation = toBN(locks[key].effectiveValue).add(signals[key].immediateEffectiveValue);
       balances.push([
         bs58.encode(new Buffer(key.slice(2), 'hex')),

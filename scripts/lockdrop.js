@@ -22,7 +22,7 @@ program
   .option('--ending', 'Get the remaining time of the lockdrop')
   .option('--lockLength <length>', 'The desired lock length - (3, 6, or 12)')
   .option('--lockValue <value>', 'The amount of Ether to lock')
-  .option('--edgeAddress <address>', 'Edgeware ED25519 Base58 encoded address')
+  .option('--edgewarePublicKey <publicKey>', 'Edgeware Public Key')
   .option('--isValidator', 'A boolean flag indicating intent to be a validator')
   .option('--locksForAddress <userAddress>', 'Returns the history of lock contracts for a participant in the lockdrop')
   .parse(process.argv);
@@ -57,10 +57,10 @@ async function getLockdropAllocation(lockdropContractAddress, remoteUrl=LOCALHOS
   return json;
 };
 
-async function lock(lockdropContractAddress, length, value, edgeAddress, isValidator=false, remoteUrl=LOCALHOST_URL) {
+async function lock(lockdropContractAddress, length, value, edgewarePublicKey, isValidator=false, remoteUrl=LOCALHOST_URL) {
   // Ensure lock lengths are valid from the CLI
   if (['3','6','12'].indexOf(length) === -1) throw new Error('Invalid length, must pass in 3, 6, 12');
-  console.log(`locking ${value} ether into Lockdrop contract for ${length} months. Receiver: ${edgeAddress}, Validator: ${isValidator}`);
+  console.log(`locking ${value} ether into Lockdrop contract for ${length} months. Receiver: ${edgewarePublicKey}, Validator: ${isValidator}`);
   console.log("");
   const web3 = getWeb3(remoteUrl);
   const contract = new web3.eth.Contract(LOCKDROP_JSON.abi, lockdropContractAddress);
@@ -76,7 +76,7 @@ async function lock(lockdropContractAddress, length, value, edgeAddress, isValid
     from: web3.currentProvider.addresses[0],
     to: lockdropContractAddress,
     gas: 150000,
-    data: contract.methods.lock(lockLength, edgeAddress, isValidator).encodeABI(),
+    data: contract.methods.lock(lockLength, edgewarePublicKey, isValidator).encodeABI(),
     value: toBN(value),
   });
 
@@ -91,14 +91,14 @@ async function lock(lockdropContractAddress, length, value, edgeAddress, isValid
   }
 }
 
-async function signal(lockdropContractAddress, signalingAddress, creationNonce, edgeAddress, remoteUrl=LOCALHOST_URL) {
-  console.log(`Signaling from address ${signalingAddress} with nonce ${creationNonce} in lockdrop contract ${lockdropContractAddress}. Receiver ${edgeAddress}`);
+async function signal(lockdropContractAddress, signalingAddress, creationNonce, edgewarePublicKey, remoteUrl=LOCALHOST_URL) {
+  console.log(`Signaling from address ${signalingAddress} with nonce ${creationNonce} in lockdrop contract ${lockdropContractAddress}. Receiver ${edgewarePublicKey}`);
   console.log("");
   const web3 = getWeb3(remoteUrl);
   const contract = new web3.eth.Contract(LOCKDROP_JSON.abi, lockdropContractAddress);
   try {
     // Default to HD-Wallet-Provider since EthereumJS-Tx breaks with Signal function
-    const txReceipt = await contract.methods.signal(signalingAddress, creationNonce, edgeAddress).send({
+    const txReceipt = await contract.methods.signal(signalingAddress, creationNonce, edgewarePublicKey).send({
       from: web3.currentProvider.addresses[0],
       gas: 150000,
     });
@@ -180,7 +180,7 @@ async function getLocksForAddress(userAddress, lockdropContractAddress, remoteUr
       eth: web3.utils.fromWei(event.returnValues.eth, 'ether'),
       lockContractAddr: event.returnValues.lockAddr,
       term: event.returnValues.term,
-      edgewareAddressAsBase58: bs58.encode(new Buffer(event.returnValues.edgewareAddr.slice(2), 'hex')),
+      edgewarePublicKeys: event.returnValues.edgewareAddr,
       unlockTime: `${(lockStorage.unlockTime - now) / 60} minutes`,
     };
   });
@@ -188,23 +188,9 @@ async function getLocksForAddress(userAddress, lockdropContractAddress, remoteUr
   return await Promise.all(promises);
 }
 
-/**
- * Ensure that the input is a formed correctly
- * @param {String} input
- */
-const BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
-function validateBase58Input(input) {
-  for (inx in input) {
-    if (BASE58_ALPHABET.indexOf(input[inx]) == -1) {
-      return false;
-    }
-  }
-  return true;
-}
-
 const LOCKDROP_JSON = JSON.parse(fs.readFileSync('./build/contracts/Lockdrop.json').toString());
 const LOCKDROP_CONTRACT_ADDRESS = process.env.LOCKDROP_CONTRACT_ADDRESS;
-const EDGEWARE_PUBLIC_ADDRESS = process.env.EDGEWARE_PUBLIC_ADDRESS;
+const EDGEWARE_PUBLIC_KEY = process.env.EDGEWARE_PUBLIC_KEY;
 const LOCALHOST_URL = 'http://localhost:8545';
 
 let ETH_PRIVATE_KEY;
@@ -242,17 +228,26 @@ if (program.lock || program.signal || program.unlock || program.unlockAll) {
 
 // For signaling and locking, ensure an edgeware public address is provided
 if (program.signal || program.lock) {
-  if (!program.edgeAddress) {
-    if (EDGEWARE_PUBLIC_ADDRESS) {
-      program.edgeAddress = EDGEWARE_PUBLIC_ADDRESS;
+  if (!program.edgewarePublicKey) {
+    if (EDGEWARE_PUBLIC_KEY) {
+      program.edgewarePublicKey = EDGEWARE_PUBLIC_KEY;
     } else {
-      throw new Error('Please input an edgeware public address with --edgeAddress');
+      throw new Error('Please input valid Edgeware 32-byte public key(s) with --edgewarePublicKey');
     }
   }
 
-  // If edgeAddress is provided, ensure it is decoded to hex form if submitted as Base58 address
-  if (validateBase58Input(program.edgeAddress)) {
-    program.edgeAddress = `0x${bs58.decode(program.edgeAddress).toString('hex')}`
+  // If edgePublicKey is provided, ensure it is at least one 32-byte hex encoded string
+  // Submitting multiple keys should be done by concatenating them
+  if (program.edgewarePublicKey.indexOf('0x') === -1) {
+    // Ensure length is multiple of 64 if sending multiple keys
+    if (program.edgewarePublicKey.length % 64 !== 0) {
+      throw new Error('Please input valid Edgeware 32-byte public key(s) with --edgewarePublicKey');
+    }
+  } else {
+    // Remove first 0x regardless if it doesn't exist and check validity
+    if (program.edgewarePublicKey.slice(2).length % 64 !== 0) {
+      throw new Error('Please input valid Edgeware 32-byte public key(s) with --edgewarePublicKey');
+    }
   }
 }
 
@@ -293,7 +288,7 @@ if (program.lock) {
   }
   // Submit tx
   (async function() {
-    await lock(program.lockdropContractAddress, program.lockLength, program.lockValue, program.edgeAddress, (!!program.isValidator), program.remoteUrl);
+    await lock(program.lockdropContractAddress, program.lockLength, program.lockValue, program.edgewarePublicKey, (!!program.isValidator), program.remoteUrl);
     process.exit(0);
   })();
 }
@@ -304,7 +299,7 @@ if (program.signal) {
   const isSame = (program.signal.toLowerCase() === providerAddress.toLowerCase());
   // If the provided address is a contract address (or not equal to the derived one), a nonce must be provided
   if (!isSame && !program.nonce) {
-    throw new Error('Please input a transaction creation nonce for the signaling contract with --nonce\nIf signaling from a non-contract account use --nonce 0 or any value.');
+    throw new Error('Please input a transaction creation nonce for the signaling contract with --nonce. If signaling from a non-contract account use --nonce 0 or any value.');
   }
   // If the provided address is equal to the derived one, set a default nonce if none is provided
   if (isSame && !program.nonce) {
@@ -312,7 +307,7 @@ if (program.signal) {
   }
   // Submit tx
   (async function() {
-    await signal(program.lockdropContractAddress, program.signal, program.nonce, program.edgeAddress, program.remoteUrl);
+    await signal(program.lockdropContractAddress, program.signal, program.nonce, program.edgewarePublicKey, program.remoteUrl);
     process.exit(0);
   })();
 }
