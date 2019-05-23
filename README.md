@@ -1,6 +1,8 @@
 # edgeware-lockdrop
 
-This repo contains the smart contracts and scripts for the Edgeware lockdrop. The lockdrop contract enables users to _lock_ ETH for 3, 6, or 12 months or _signal_ a balance. Users also specify a 32-byte Edgeware public key, and a boolean for whether they would like to be a validator upon network launch (in which case, they must submit 3 public keys).
+This repo contains the smart contracts and scripts for the Edgeware lockdrop.
+
+The lockdrop contract enables users to _lock_ ETH for 3, 6, or 12 months or _signal_ a balance. Users also specify a 32-byte Edgeware public key, and a boolean for whether they would like to be a validator upon network launch (in which case, they must submit 3 public keys).
 
 ## Usage
 ```
