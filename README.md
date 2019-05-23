@@ -1,5 +1,7 @@
 # edgeware-lockdrop
-This repo contains the smart contracts and scripts for the Edgeware lockdrop. The lockdrop contract enables users to _lock_ and _signal_ ether towards a given project such as Edgeware. Users specify either 3, 6, or 12 month lockups and must submit an edgeware 32 byte hex public key and their interest in staking as a validator. Note, if submitting as a validator, you must submit 3 keys: 2 sr25519 keys and 1 ed25519 key. 
+This repo contains the smart contracts and scripts for the Edgeware lockdrop. The lockdrop contract enables users to _lock_ and _signal_ ether towards a given project such as Edgeware. Users specify a 3, 6, or 12 month lockup time, an edgeware 32 byte hex public key, and their interest in staking as a validator. 
+
+Note, if submitting as a validator, you must submit 3 keys: 2 sr25519 keys and 1 ed25519 key. 
 
 Instructions for participating follow.
 
