@@ -26,7 +26,7 @@ INFURA_PATH=v3/INFURA_API_KEY_IF_YOU_WANT_TO_USE_REMOTE_NODE
 LOCKDROP_CONTRACT_ADDRESS=0xLOCKDROP
 
 # Edgeware config
-EDGEWARE_PUBLIC_ADDRESS=5FnHAc3WEXdkkiFPciTvWnRNh5VBCaeGP8wdbtBtVM7iA4bL
+EDGEWARE_PUBLIC_KEY=0xb0762957c3552a8c6c4a0c06ef40330e2ac6625ea68a9339896910bff5238e08
 ```
 
 To use the script `/scripts/lockdrop.js`, ensure you've deployed to the respective network:
@@ -52,7 +52,7 @@ Options:
   --ending                          Get the remaining time of the lockdrop
   --lockLength <length>             The desired lock length - (3, 6, or 12)
   --lockValue <value>               The amount of Ether to lock
-  --edgeAddress <address>           Edgeware ED25519 Base58 encoded address
+  --edgewarePublicKey <publicKey>   Edgeware Public Key
   --isValidator                     A boolean flag indicating intent to be a validator
   --locksForAddress <userAddress>   Returns the history of lock contracts for a participant in the lockdrop
   -h, --help                        output usage information
