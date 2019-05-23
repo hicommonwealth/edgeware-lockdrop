@@ -1,7 +1,9 @@
 # edgeware-lockdrop
-This repo contains the smart contracts and scripts for the Edgeware lockdrop. The lockdrop contract enables users to _lock_ and _signal_ ether towards a given project such as Edgeware. Users specify either 3, 6, or 12 month lockups and must submit an edgeware 32 byte hex public key and their interest in staking as a validator (if submitting as a validator, you must submit 3 keys: 2 sr25519 keys and 1 ed25519 key). Instructions for participating is below.
+This repo contains the smart contracts and scripts for the Edgeware lockdrop. The lockdrop contract enables users to _lock_ and _signal_ ether towards a given project such as Edgeware. Users specify either 3, 6, or 12 month lockups and must submit an edgeware 32 byte hex public key and their interest in staking as a validator. Note, if submitting as a validator, you must submit 3 keys: 2 sr25519 keys and 1 ed25519 key. 
 
-# Disclaimer
+Instructions for participating follow.
+
+# Disclaimer for interested validators
 If you are someone interested in validating on Edgeware, understand and ensure you have created 2 SR25519 and 1 ED25519 keypairs. You will need these for validating on Edgeware. If you do not provide these, there is no guarantee we can add you as a validator. The steps are as follows
 1. Install rust [here](https://doc.rust-lang.org/cargo/getting-started/installation.html)
 2. Download subkey
