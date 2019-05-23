@@ -3,7 +3,7 @@ This repo contains the smart contracts and scripts for the Edgeware lockdrop. Th
 
 Instructions for participating follow.
 
-# Disclaimer for interested validators
+## Disclaimer for interested validators
 If you are someone interested in validating on Edgeware, understand and ensure you have created 2 SR25519 and 1 ED25519 keypairs. You will need these for validating on Edgeware. If you do not provide these, there is no guarantee we can add you as a validator. The steps are as follows
 1. Install rust [here](https://doc.rust-lang.org/cargo/getting-started/installation.html)
 2. Download subkey
