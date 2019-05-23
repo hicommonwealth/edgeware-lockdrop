@@ -1,8 +1,6 @@
 # edgeware-lockdrop
 
-This repo contains the smart contracts and scripts for the Edgeware lockdrop. The lockdrop contract enables users to _lock_ and _signal_ ETH. Users specify a 3, 6, or 12 month lockup time, a 32-byte Edgeware public key, and a boolean indicating whether they would like to be a validator upon network launch (in which case, they must submit 3 public keys).
-
-Instructions for participating follow.
+This repo contains the smart contracts and scripts for the Edgeware lockdrop. The lockdrop contract enables users to _lock_ ETH for 3, 6, or 12 months or _signal_ a balance. Users also specify a 32-byte Edgeware public key, and a boolean for whether they would like to be a validator upon network launch (in which case, they must submit 3 public keys).
 
 ## Usage
 ```
@@ -87,13 +85,16 @@ Phrase `vacant paddle daring vacant rude release dutch morning cushion pledge tr
   Public key (hex): 0x16ca51710516a648e016b00b8872cb37946dc1aabd531021d593e1d76604cf40
   Address (SS58): 5Cab1dV9g8hb2MrBcVUjCyFEJBqBWZZ4djHRE4pBYHbk4kyB
 ```
-5. Concatenate the public keys together, removing the `0x` in front of all intermediate elements. This string should be 194 characters.
+
+Then, concatenate the public keys together, removing the `0x` in front of all intermediate elements. This string should be 194 characters.
+
 ```
 let CONCATENATED_PUBLIC_KEYS = `${0xc2e973c4d848d25613141ef883bf97d35b513230427f52c56d2bf92bc4fa365c}
                                 ${feba4989f1de5fe7aa911f9abed67742b93099701d4f9b0e07b8ac35e2f78131}
                                 ${16ca51710516a648e016b00b8872cb37946dc1aabd531021d593e1d76604cf40}`
 ```
-6. If you intend validating, you will submit THIS concatenation as your `--edgewarePublicKey` defined below. You can add it to your `.env` or specify it as a CLI argument.
+
+If you intend to be a validator, submit THIS concatenated string as your `--edgewarePublicKey`. You can add it to your `.env` or specify it as a CLI argument.
 
 ## Examples
 
