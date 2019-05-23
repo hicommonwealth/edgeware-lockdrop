@@ -34,7 +34,6 @@ function getWeb3(remoteUrl) {
   } else {
     provider = new Web3.providers.HttpProvider(remoteUrl);
   }
-
   const web3 = new Web3(provider);
   return web3;
 }
@@ -79,7 +78,6 @@ async function lock(lockdropContractAddress, length, value, edgewarePublicKey, i
     data: contract.methods.lock(lockLength, edgewarePublicKey, isValidator).encodeABI(),
     value: toBN(value),
   });
-
   try {
     // Sign the tx and send it
     tx.sign(Buffer.from(ETH_PRIVATE_KEY, 'hex'));
@@ -191,7 +189,9 @@ async function getLocksForAddress(userAddress, lockdropContractAddress, remoteUr
 const LOCKDROP_JSON = JSON.parse(fs.readFileSync('./build/contracts/Lockdrop.json').toString());
 const LOCKDROP_CONTRACT_ADDRESS = process.env.LOCKDROP_CONTRACT_ADDRESS;
 const EDGEWARE_PUBLIC_KEY = process.env.EDGEWARE_PUBLIC_KEY;
+const INFURA_PATH = process.env.INFURA_PATH;
 const LOCALHOST_URL = 'http://localhost:8545';
+
 
 let ETH_PRIVATE_KEY;
 if (process.env.ETH_PRIVATE_KEY) {
@@ -216,7 +216,11 @@ if (LOCKDROP_CONTRACT_ADDRESS) {
 
 // If no remote url provided, default to localhost
 if (!program.remoteUrl) {
-  program.remoteUrl = LOCALHOST_URL;
+  if (INFURA_PATH) {
+    program.remoteUrl = INFURA_PATH
+  } else {
+    program.remoteUrl = LOCALHOST_URL;
+  }
 }
 
 // For all functions that require signing, ensure private key is stored in .env file
@@ -270,7 +274,6 @@ if (program.balance) {
       totalEffectiveETHSignaled
     } = await getBalance(program.lockdropContractAddress, program.remoteUrl);
     console.log(`Total ETH locked: ${fromWei(totalETHLocked, 'ether')}\nTotal ETH signaled: ${fromWei(totalETHSignaled, 'ether')}`);
-    console.log(`Total effective ETH locked: ${fromWei(totalEffectiveETHLocked, 'ether')}\nTotal effective ETH signaled: ${fromWei(totalEffectiveETHSignaled, 'ether')}`);
     process.exit(0);
   })();
 };
