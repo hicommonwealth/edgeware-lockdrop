@@ -80,11 +80,11 @@ node scripts/lockdrop.js -l --lockValue 1 --lockLength 3 --edgewarePublicKey 0xa
 ```
 node scripts/lockdrop.js -l --lockValue 0.025 --lockLength 6
 ```
-3. Locking up 50 ETH for 12 months with no intent to validate.
+3. Locking up 50 ETH for 12 months with no intent to validate against a local node.
 ```
-node scripts/lockdrop.js -l --lockValue 0.025 --lockLength 12 --edgewarePublicKey 0xa469e40f0a073be5b28e2df6e746ce6519260cdd764bc5f6b3fb3aac5cda3c35
+node scripts/lockdrop.js -r http://localhost:8545 -l --lockValue 50 --lockLength 12 --edgewarePublicKey 0xa469e40f0a073be5b28e2df6e746ce6519260cdd764bc5f6b3fb3aac5cda3c35
 ```
-4. Locking up 1 ETH for 0.1 for 12 months with intent to validate and 3 Public keys conconatenated
+4. Locking up 1 ETH for 0.1 for 12 months with intent to validate and 3 Public keys conconatenated.
 ```
 node scripts/lockdrop.js --lock --lockLength 12 --lockValue 0.1 --edgewarePublicKey $CONCATENATED_PUBLIC_KEYS --isValidator
 ```
@@ -94,9 +94,9 @@ node scripts/lockdrop.js --lock --lockLength 12 --lockValue 0.1 --edgewarePublic
 ```
 node scripts/lockdrop.js -s 0x2d65a140446894Ef1E71C333ecaA5BD8b5e6D568 -n 0 --edgewarePublicKey 0xa469e40f0a073be5b28e2df6e746ce6519260cdd764bc5f6b3fb3aac5cda3c35
 ```
-2. 4. Signaling from an Ethereum contract address created from nonce 101
+2. 4. Signaling from an Ethereum contract address created from nonce 101 from a local node
 ```
-node scripts/lockdrop.js -s 0x2d65a140446894Ef1E71C333ecaA5BD8b5e6D568 -n 101 --edgewarePublicKey 0xa469e40f0a073be5b28e2df6e746ce6519260cdd764bc5f6b3fb3aac5cda3c35
+node scripts/lockdrop.js -r http://localhost:8545 --signal 0x2d65a140446894Ef1E71C333ecaA5BD8b5e6D568 -n 101 --edgewarePublicKey 0xa469e40f0a073be5b28e2df6e746ce6519260cdd764bc5f6b3fb3aac5cda3c35
 ```
 
 #### Unlocking
@@ -104,9 +104,9 @@ node scripts/lockdrop.js -s 0x2d65a140446894Ef1E71C333ecaA5BD8b5e6D568 -n 101 --
 ```
 node scripts/lockdrop.js --unlockAll
 ```
-2. Unlocking a specific Lock User Contract (LUC)
+2. Unlocking a specific Lock User Contract (LUC) from local node
 ```
-node scripts/lockdrop.js --unlock 0x0830135aabcebf1e9d08ea6ff50ffa7222e45a43
+node scripts/lockdrop.js -r http://localhost:8545 --unlock 0x0830135aabcebf1e9d08ea6ff50ffa7222e45a43
 ```
 
 #### Utilities
