@@ -20,7 +20,7 @@
 
 require('dotenv').config();
 const HDWalletProvider = require('truffle-hdwallet-provider');
-const infuraKey = process.env.INFURA_PATH;
+const infuraPath = process.env.INFURA_PATH;
 const privateKeyHex = process.env.ETH_PRIVATE_KEY;
 //
 // const fs = require('fs');
@@ -51,7 +51,7 @@ module.exports = {
     },
 
     mainnet: {
-      provider: () => new HDWalletProvider(privateKeyHex, `https://mainnet.infura.io/${infuraKey}`),
+      provider: () => new HDWalletProvider(privateKeyHex, `${infuraPath}`),
       network_id: 1,       // Ropsten's id
       gas: 8000000,        // Ropsten has a lower block limit than mainnet
       confirmations: 2,    // # of confs to wait between deployments. (default: 0)
@@ -72,7 +72,7 @@ module.exports = {
     // Useful for deploying to a public network.
     // NB: It's important to wrap the provider as a function.
     ropsten: {
-      provider: () => new HDWalletProvider(privateKeyHex, `https://ropsten.infura.io/${infuraKey}`),
+      provider: () => new HDWalletProvider(privateKeyHex, `${infuraPath}`),
       network_id: 3,       // Ropsten's id
       gas: 5500000,        // Ropsten has a lower block limit than mainnet
       confirmations: 2,    // # of confs to wait between deployments. (default: 0)
