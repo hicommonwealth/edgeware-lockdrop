@@ -245,7 +245,9 @@ if (program.signal || program.lock) {
     }
   } else {
     // Remove first 0x regardless if it doesn't exist and check validity
-    if (program.edgewarePublicKey.slice(2).length % 64 !== 0) {
+    if (program.edgewarePublicKey.slice(2).length === 0) {
+      throw new Error('Please input valid Edgeware 32-byte public key(s) with --edgewarePublicKey');
+    } else if (program.edgewarePublicKey.slice(2).length % 64 !== 0) {
       throw new Error('Please input valid Edgeware 32-byte public key(s) with --edgewarePublicKey');
     }
   }
@@ -285,6 +287,12 @@ if (program.lock) {
   // Ensure lock specific values are provided
   if (!program.lockLength || !program.lockValue) {
     throw new Error('Please input a length and value using --lockLength and --lockValue');
+  }
+
+  if (!!program.isValidator) {
+    if (program.edgewarePublicKey.length < 192) {
+      throw new Error('To validate you must submit 2 SR25519 public keys and 1 ED25519 publick key concatenated together with --edgewarePublicKey. An example of this would be to submit --edgewarePublicKey 0x9e8f2c6c9b0a4ef5d3c4c524b0f49d7ac60f10a3b0649ff45c0f273420a34732fe1c6e6fd4ecee1cb391f58131ac91ea2debe06d7124564f2e5a03506fbd926dfb6eed2b4afc7284e6ab23f3a55d799a5cf2c64cf2f398f6eb11be5124a3ccfa.');
+    }
   }
   // Submit tx
   (async function() {
