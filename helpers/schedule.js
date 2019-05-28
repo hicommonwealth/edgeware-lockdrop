@@ -15,7 +15,7 @@ const BONUS_20 = toBN(20);
 const BONUS_10 = toBN(10);
 
 const getAdditiveBonus = (lockTime, lockStart, currentTotalETH) => {
-  if (toBN(lockStart) != toBN(JUNE_1ST_UTC)) {
+  if (!toBN(lockStart).eq(toBN(JUNE_1ST_UTC))) {
     return getFixtureAdditiveBonus(lockTime, lockStart);
   } else {
     if (toBN(lockTime).lte(toBN(JUNE_16TH_UTC))) {
@@ -84,11 +84,11 @@ const getFixtureAdditiveBonus = (lockTime, lockStart) => {
   }
 
   // calculate the additive bonus for the period the lock occurred
-  if (toBN(lockTime) < toBN(lockStart).add(toBN(SECONDS_IN_MONTH))) {
+  if (toBN(lockTime).lt(toBN(lockStart).add(toBN(SECONDS_IN_MONTH)))) {
     return toBN(40);
-  } else if (lockTime < lockStart + (SECONDS_IN_MONTH * 2)) {
+  } else if (lockTime.lt(toBN(lockStart).add(toBN(SECONDS_IN_MONTH).mul(toBN('2'))))) {
     return toBN(30);
-  } else if (lockTime < lockStart + (SECONDS_IN_MONTH * 3)) {
+  } else if (lockTime.lt(toBN(lockStart).add(toBN(SECONDS_IN_MONTH).mul(toBN('3'))))) {
     return toBN(0);
   } else {
     return toBN(0);
