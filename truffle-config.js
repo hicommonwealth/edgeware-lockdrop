@@ -20,8 +20,17 @@
 
 require('dotenv').config();
 const HDWalletProvider = require('truffle-hdwallet-provider');
-const infuraPath = process.env.INFURA_PATH;
-const privateKeyHex = process.env.ETH_PRIVATE_KEY;
+const { getPrivateKeyFromEnvVar, getPrivateKeyFromEncryptedJson } = require("./helpers/util.js");
+
+const INFURA_PATH = process.env.INFURA_PATH;
+
+let ETH_PRIVATE_KEY;
+if (process.env.ETH_PRIVATE_KEY) {
+  ETH_PRIVATE_KEY = getPrivateKeyFromEnvVar();
+}
+
+ETH_PRIVATE_KEY = getPrivateKeyFromEncryptedJson();
+
 //
 // const fs = require('fs');
 // const mnemonic = fs.readFileSync(".secret").toString().trim();
@@ -51,9 +60,9 @@ module.exports = {
     },
 
     mainnet: {
-      provider: () => new HDWalletProvider(privateKeyHex, `${infuraPath}`),
-      network_id: 1,       // Ropsten's id
-      gas: 8000000,        // Ropsten has a lower block limit than mainnet
+      provider: () => new HDWalletProvider(ETH_PRIVATE_KEY, `${INFURA_PATH}`),
+      network_id: 1,       // Mainnet's id
+      gas: 8000000,        // Mainnet has a higher block limit than mainnet
       confirmations: 2,    // # of confs to wait between deployments. (default: 0)
       timeoutBlocks: 200,  // # of blocks before a deployment times out  (minimum/default: 50)
       skipDryRun: true     // Skip dry run before migrations? (default: false for public nets )
@@ -72,7 +81,7 @@ module.exports = {
     // Useful for deploying to a public network.
     // NB: It's important to wrap the provider as a function.
     ropsten: {
-      provider: () => new HDWalletProvider(privateKeyHex, `${infuraPath}`),
+      provider: () => new HDWalletProvider(ETH_PRIVATE_KEY, `${INFURA_PATH}`),
       network_id: 3,       // Ropsten's id
       gas: 5500000,        // Ropsten has a lower block limit than mainnet
       confirmations: 2,    // # of confs to wait between deployments. (default: 0)

@@ -3,10 +3,11 @@ const program = require('commander');
 const Web3 = require('web3');
 const { toBN, fromWei } = require('web3').utils;
 const HDWalletProvider = require("truffle-hdwallet-provider");
-const EthereumTx = require('ethereumjs-tx')
+const EthereumTx = require('ethereumjs-tx');
 const bs58 = require('bs58');
 const fs = require('fs');
 const ldHelpers = require("../helpers/lockdropHelper.js");
+const { getPrivateKeyFromEnvVar, getPrivateKeyFromEncryptedJson } = require("../helpers/util.js");
 
 program
   .version('0.1.0')
@@ -187,37 +188,33 @@ async function getLocksForAddress(userAddress, lockdropContractAddress, remoteUr
 }
 
 const LOCKDROP_JSON = JSON.parse(fs.readFileSync('./build/contracts/Lockdrop.json').toString());
-const LOCKDROP_CONTRACT_ADDRESS = process.env.LOCKDROP_CONTRACT_ADDRESS;
+const LOCKDROP_CONTRACT_ADDRESS_MAINNET = process.env.LOCKDROP_CONTRACT_ADDRESS_MAINNET;
+const LOCKDROP_CONTRACT_ADDRESS_ROPSTEN = process.env.LOCKDROP_CONTRACT_ADDRESS_ROPSTEN;
 const EDGEWARE_PUBLIC_KEY = process.env.EDGEWARE_PUBLIC_KEY;
 const INFURA_PATH = process.env.INFURA_PATH;
 const LOCALHOST_URL = 'http://localhost:8545';
-
+const ETH_JSON_PASSWORD = process.env.ETH_JSON_PASSWORD;
+const ETH_JSON_VERSION = process.env.ETH_JSON_VERSION;
 
 let ETH_PRIVATE_KEY;
 if (process.env.ETH_PRIVATE_KEY) {
-  ETH_PRIVATE_KEY = (process.env.ETH_PRIVATE_KEY.indexOf('0x') === -1)
-    ? process.env.ETH_PRIVATE_KEY
-    : process.env.ETH_PRIVATE_KEY.slice(2);
+  ETH_PRIVATE_KEY = getPrivateKeyFromEnvVar();
 }
 
-// At least one should be populated
-if (LOCKDROP_CONTRACT_ADDRESS) {
-  program.lockdropContractAddress = LOCKDROP_CONTRACT_ADDRESS;
-}
-
-if (!program.lockdropContractAddress && !LOCKDROP_CONTRACT_ADDRESS) {
+// Set lockdrop contract address depending on what .env (environment variable) is set.
+// Defaults to Mainnet (if set)
+if (LOCKDROP_CONTRACT_ADDRESS_MAINNET) {
+  program.lockdropContractAddress = LOCKDROP_CONTRACT_ADDRESS_MAINNET;
+} else if (LOCKDROP_CONTRACT_ADDRESS_ROPSTEN) {
+  program.lockdropContractAddress = LOCKDROP_CONTRACT_ADDRESS_ROPSTEN;
+} else {
   throw new Error('Input a contract address for the Lockdrop contract');
-}
-
-// If passed in through .env
-if (LOCKDROP_CONTRACT_ADDRESS) {
-  program.lockdropContractAddress = LOCKDROP_CONTRACT_ADDRESS
 }
 
 // If no remote url provided, default to localhost
 if (!program.remoteUrl) {
   if (INFURA_PATH) {
-    program.remoteUrl = INFURA_PATH
+    program.remoteUrl = INFURA_PATH;
   } else {
     program.remoteUrl = LOCALHOST_URL;
   }
@@ -225,10 +222,12 @@ if (!program.remoteUrl) {
 
 // For all functions that require signing, ensure private key is stored in .env file
 if (program.lock || program.signal || program.unlock || program.unlockAll) {
-  if (!ETH_PRIVATE_KEY) {
+  if (!ETH_JSON_VERSION && !ETH_PRIVATE_KEY) {
     throw new Error('Please add your private key hex to a .env file in the project directory');
   }
 }
+
+ETH_PRIVATE_KEY = getPrivateKeyFromEncryptedJson();
 
 // For signaling and locking, ensure an edgeware public address is provided
 if (program.signal || program.lock) {

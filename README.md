@@ -22,11 +22,18 @@ Create a file named `.env` with the following information
 # ETH config
 ETH_PRIVATE_KEY=<ETHEREUM_PRIVATE_KEY_HEX>
 
+# ETH version of encrypted JSON file (either v1, v2, or ethsale)
+ETH_JSON_VERSION=<ETHEREUM_ENCRYPTED_JSON_KEYSTORE_VERSION>
+
+# ETH encrypted JSON file password (alternative to providing provide key)
+ETH_JSON_PASSWORD=<ETHEREUM_ENCRYPTED_JSON_KEYSTORE_PASSWORD>
+
 # Node/provider config
 INFURA_PATH=https://ropsten.infura.io/v3/<INFURA_API_KEY>
 
 # Lockdrop config
-LOCKDROP_CONTRACT_ADDRESS=<LOCKDROP_ADDRESS>
+LOCKDROP_CONTRACT_ADDRESS_MAINNET=<LOCKDROP_ADDRESS_MAINNET>
+LOCKDROP_CONTRACT_ADDRESS_ROPSTEN=<LOCKDROP_ADDRESS_ROPSTEN>
 
 # Edgeware config
 EDGEWARE_PUBLIC_KEY=0xa469e40f0a073be5b28e2df6e746ce6519260cdd764bc5f6b3fb3aac5cda3c35
