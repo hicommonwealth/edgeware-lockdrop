@@ -220,9 +220,11 @@ if (!program.remoteUrl) {
   }
 }
 
+console.log('program.remoteUrl', program.remoteUrl)
+
 // For all functions that require signing, ensure private key is stored in .env file
 if (program.lock || program.signal || program.unlock || program.unlockAll) {
-  if (!ETH_JSON_VERSION && !ETH_PRIVATE_KEY) {
+  if (!ETH_PRIVATE_KEY) {
     throw new Error('Please add your private key hex to a .env file in the project directory');
   }
 }
