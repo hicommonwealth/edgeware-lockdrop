@@ -39,66 +39,60 @@ function getWeb3(remoteUrl) {
   return web3;
 }
 
-async function getCurrentTimestamp(remoteUrl=LOCALHOST_URL) {
-  const web3 = getWeb3(remoteUrl);
-  const block = await web3.eth.getBlock("latest");
+async function getCurrentTimestamp() {
+  const block = await WEB3_INSTANCE.eth.getBlock("latest");
   return block.timestamp;
 }
 
-async function getLockdropAllocation(lockdropContractAddress, remoteUrl=LOCALHOST_URL, totalAllocation='5000000000000000000000000') {
+async function getLockdropAllocation(totalAllocation='5000000000000000000000000') {
   console.log('Fetching Lockdrop locked locks...');
   console.log("");
-  const web3 = getWeb3(remoteUrl);
-  const contract = new web3.eth.Contract(LOCKDROP_JSON.abi, lockdropContractAddress);
-  const { locks, totalEffectiveETHLocked } = await ldHelpers.calculateEffectiveLocks(contract);
-  const { signals, totalEffectiveETHSignaled } = await ldHelpers.calculateEffectiveSignals(web3, contract);
+  const { locks, totalEffectiveETHLocked } = await ldHelpers.calculateEffectiveLocks(CONTRACT_INSTANCE);
+  const { signals, totalEffectiveETHSignaled } = await ldHelpers.calculateEffectiveSignals(WEB3_INSTANCE, CONTRACT_INSTANCE);
   const totalEffectiveETH = totalEffectiveETHLocked.add(totalEffectiveETHSignaled);
   let json = await ldHelpers.getEdgewareBalanceObjects(locks, signals, totalAllocation, totalEffectiveETH);
   return json;
 };
 
-async function lock(lockdropContractAddress, length, value, edgewarePublicKey, isValidator=false, remoteUrl=LOCALHOST_URL) {
+async function lock(length, value, isValidator=false) {
   // Ensure lock lengths are valid from the CLI
   if (['3','6','12'].indexOf(length) === -1) throw new Error('Invalid length, must pass in 3, 6, 12');
   console.log(`locking ${value} ether into Lockdrop contract for ${length} months. Receiver: ${edgewarePublicKey}, Validator: ${isValidator}`);
   console.log("");
-  const web3 = getWeb3(remoteUrl);
-  const contract = new web3.eth.Contract(LOCKDROP_JSON.abi, lockdropContractAddress);
   // Format lock length values as their respective enum values for the lockdrop contract
   let lockLength = (length == "3") ? 0 : (length == "6") ? 1 : 2;
   // Grab account's transaction nonce for tx params
-  let txNonce = await web3.eth.getTransactionCount(web3.currentProvider.addresses[0]);
+  let txNonce = await WEB3_INSTANCE.eth.getTransactionCount(WEB3_INSTANCE.currentProvider.addresses[0]);
   // Convert ETH value submitted into WEI
-  value = web3.utils.toWei(value, 'ether');
+  value = WEB3_INSTANCE.utils.toWei(value, 'ether');
   // Create tx params for lock function
   const tx = new EthereumTx({
     nonce: txNonce,
-    from: web3.currentProvider.addresses[0],
-    to: lockdropContractAddress,
+    from: WEB3_INSTANCE.currentProvider.addresses[0],
+    to: LOCKDROP_CONTRACT_ADDRESS,
     gas: 150000,
-    data: contract.methods.lock(lockLength, edgewarePublicKey, isValidator).encodeABI(),
+    data: CONTRACT_INSTANCE.methods.lock(lockLength, EDGEWARE_PUBLIC_KEY, isValidator).encodeABI(),
     value: toBN(value),
   });
   try {
     // Sign the tx and send it
     tx.sign(Buffer.from(ETH_PRIVATE_KEY, 'hex'));
     var raw = '0x' + tx.serialize().toString('hex');
-    const txReceipt = await web3.eth.sendSignedTransaction(raw);
+    const txReceipt = await WEB3_INSTANCE.eth.sendSignedTransaction(raw);
     console.log(`Transaction hash: ${txReceipt.transactionHash}`);
   } catch (e) {
     console.log(e);
   }
 }
 
-async function signal(lockdropContractAddress, signalingAddress, creationNonce, edgewarePublicKey, remoteUrl=LOCALHOST_URL) {
-  console.log(`Signaling from address ${signalingAddress} with nonce ${creationNonce} in lockdrop contract ${lockdropContractAddress}. Receiver ${edgewarePublicKey}`);
+async function signal(signalingAddress, creationNonce) {
+  console.log(`Signaling from address ${signalingAddress} with nonce ${creationNonce} in lockdrop contract ${LOCKDROP_CONTRACT_ADDRESS}. Receiver ${EDGEWARE_PUBLIC_KEY}`);
   console.log("");
-  const web3 = getWeb3(remoteUrl);
-  const contract = new web3.eth.Contract(LOCKDROP_JSON.abi, lockdropContractAddress);
+
   try {
     // Default to HD-Wallet-Provider since EthereumJS-Tx breaks with Signal function
-    const txReceipt = await contract.methods.signal(signalingAddress, creationNonce, edgewarePublicKey).send({
-      from: web3.currentProvider.addresses[0],
+    const txReceipt = await CONTRACT_INSTANCE.methods.signal(signalingAddress, creationNonce, EDGEWARE_PUBLIC_KEY).send({
+      from: WEB3_INSTANCE.currentProvider.addresses[0],
       gas: 150000,
     });
     console.log(`Transaction hash: ${txReceipt.transactionHash}`);
@@ -107,76 +101,68 @@ async function signal(lockdropContractAddress, signalingAddress, creationNonce, 
   }
 }
 
-async function unlock(lockContractAddress, remoteUrl=LOCALHOST_URL, nonce=undefined) {
-  console.log(`Unlocking lock contract: ${lockContractAddress}`);
-  const web3 = getWeb3(remoteUrl);
+async function unlock(customUnlockContractAddress, nonce=undefined) {
+  console.log(`Unlocking lock contract: ${customUnlockContractAddress}`);
   try {
     // Grab account's transaction nonce for tx params if nonce is not provided
     if (!nonce) {
-      nonce = await web3.eth.getTransactionCount(web3.currentProvider.addresses[0]);
+      nonce = await WEB3_INSTANCE.eth.getTransactionCount(WEB3_INSTANCE.currentProvider.addresses[0]);
     }
     // Create generic send transaction to unlock from the lock contract
     const tx = new EthereumTx({
       nonce: nonce,
-      from: web3.currentProvider.addresses[0],
-      to: lockContractAddress,
+      from: WEB3_INSTANCE.currentProvider.addresses[0],
+      to: customUnlockContractAddress,
       gas: 100000,
     });
     // Sign the tx and send it
     tx.sign(Buffer.from(ETH_PRIVATE_KEY, 'hex'));
     var raw = '0x' + tx.serialize().toString('hex');
-    const txReceipt = await web3.eth.sendSignedTransaction(raw);
+    const txReceipt = await WEB3_INSTANCE.eth.sendSignedTransaction(raw);
     console.log(`Transaction hash: ${txReceipt.transactionHash}`);
   } catch(e) {
     console.log(e);
   }
 }
 
-async function unlockAll(lockdropContractAddress, remoteUrl=LOCALHOST_URL) {
-  const web3 = getWeb3(remoteUrl);
-  console.log(`Fetching all locks for user ${web3.currentProvider.addresses[0]} for lockdrop contract ${lockdropContractAddress}\n`);
-  const balanceBefore = web3.utils.fromWei((await web3.eth.getBalance(web3.currentProvider.addresses[0])), 'ether');
+async function unlockAll() {
+  console.log(`Fetching all locks for user ${WEB3_INSTANCE.currentProvider.addresses[0]} for lockdrop contract ${LOCKDROP_CONTRACT_ADDRESS}\n`);
+  const balanceBefore = WEB3_INSTANCE.utils.fromWei((await WEB3_INSTANCE.eth.getBalance(WEB3_INSTANCE.currentProvider.addresses[0])), 'ether');
   console.log(`Balance before unlocking: ${balanceBefore}`);
-  const locks = await getLocksForAddress(web3.currentProvider.addresses[0], lockdropContractAddress, remoteUrl);
-  let txNonce = await web3.eth.getTransactionCount(web3.currentProvider.addresses[0]);
+  const locks = await getLocksForAddress(WEB3_INSTANCE.currentProvider.addresses[0]);
+  let txNonce = await WEB3_INSTANCE.eth.getTransactionCount(WEB3_INSTANCE.currentProvider.addresses[0]);
   let promises = locks.map(async (lock, inx) => {
-    return await unlock(lock.lockContractAddr, remoteUrl, txNonce + inx);
+    return await unlock(lock.lockContractAddr, txNonce + inx);
   });
 
   await Promise.all(promises);
-  const afterBalance = web3.utils.fromWei((await web3.eth.getBalance(web3.currentProvider.addresses[0])), 'ether');
+  const afterBalance = WEB3_INSTANCE.utils.fromWei((await WEB3_INSTANCE.eth.getBalance(WEB3_INSTANCE.currentProvider.addresses[0])), 'ether');
   console.log(`Balance after unlocking: ${afterBalance}`);
 }
 
-async function getBalance(lockdropContractAddress, remoteUrl=LOCALHOST_URL) {
-  console.log(`Fetching Lockdrop balance from lockdrop contract ${lockdropContractAddress}\n`);
-  const web3 = getWeb3(remoteUrl);
-  const contract = new web3.eth.Contract(LOCKDROP_JSON.abi, lockdropContractAddress);
-  let { totalETHLocked, totalEffectiveETHLocked } = await ldHelpers.getTotalLockedBalance(contract);
-  let { totalETHSignaled, totalEffectiveETHSignaled } = await ldHelpers.getTotalSignaledBalance(web3, contract);
+async function getBalance() {
+  console.log(`Fetching Lockdrop balance from lockdrop contract ${LOCKDROP_CONTRACT_ADDRESS}\n`);
+  let { totalETHLocked, totalEffectiveETHLocked } = await ldHelpers.getTotalLockedBalance(CONTRACT_INSTANCE);
+  let { totalETHSignaled, totalEffectiveETHSignaled } = await ldHelpers.getTotalSignaledBalance(web3, CONTRACT_INSTANCE);
   return { totalETHLocked, totalEffectiveETHLocked, totalETHSignaled, totalEffectiveETHSignaled };
 };
 
-async function getEnding(lockdropContractAddress, remoteUrl=LOCALHOST_URL) {
-  console.log(`Calculating ending of lock period for lockdrop contract ${lockdropContractAddress}\n`);
-  const web3 = getWeb3(remoteUrl);
-  const contract = new web3.eth.Contract(LOCKDROP_JSON.abi, lockdropContractAddress);
-  const ending = await contract.methods.LOCK_END_TIME().call();
-  const now = await getCurrentTimestamp(remoteUrl);
+async function getEnding() {
+  console.log(`Calculating ending of lock period for lockdrop contract ${LOCKDROP_CONTRACT_ADDRESS}\n`);
+  const ending = await CONTRACT_INSTANCE.methods.LOCK_END_TIME().call();
+  const now = await getCurrentTimestamp();
   return ending - now;
 }
 
-async function getLocksForAddress(userAddress, lockdropContractAddress, remoteUrl=LOCALHOST_URL) {
-  const web3 = getWeb3(remoteUrl);
-  const contract = new web3.eth.Contract(LOCKDROP_JSON.abi, lockdropContractAddress);
-  const lockEvents = await ldHelpers.getLocks(contract, userAddress);
-  const now = await getCurrentTimestamp(remoteUrl);
+async function getLocksForAddress(userAddress) {
+  const lockEvents = await ldHelpers.getLocks(CONTRACT_INSTANCE, userAddress);
+  const now = await getCurrentTimestamp();
 
   let promises = lockEvents.map(async event => {
-    let lockStorage = await ldHelpers.getLockStorage(web3, event.returnValues.lockAddr);
+    let lockStorage = await ldHelpers.getLockStorage(WEB3_INSTANCE, event.returnValues.lockAddr);
     return {
       owner: event.returnValues.owner,
-      eth: web3.utils.fromWei(event.returnValues.eth, 'ether'),
+      eth: WEB3_INSTANCE.utils.fromWei(event.returnValues.eth, 'ether'),
       lockContractAddr: event.returnValues.lockAddr,
       term: event.returnValues.term,
       edgewarePublicKeys: event.returnValues.edgewareAddr,
@@ -187,26 +173,52 @@ async function getLocksForAddress(userAddress, lockdropContractAddress, remoteUr
   return await Promise.all(promises);
 }
 
+async function setupListeners() {
+  const currentBlock = await WEB3_INSTANCE.eth.getBlockNumber();
+
+  CONTRACT_INSTANCE.events.Signaled({
+    fromBlock: currentBlock
+  },
+  (error, signalEvent) => {
+    if (!error) {
+      console.log(`Subscription to Signal event received event: `, signalEvent);
+    } else {
+      console.log(`Error with Signal event: ${error}`);
+    }
+  })
+  .on('changed', (signalChangedEvent) => {
+    console.log(`Subscription to Signal event received 'changed' event: `, signalChangedEvent);
+  })
+  .on('error', (error) => {
+    console.error(`Error listening to Signal event: ${error}`);
+  });
+}
+
 const LOCKDROP_JSON = JSON.parse(fs.readFileSync('./build/contracts/Lockdrop.json').toString());
+let LOCKDROP_CONTRACT_ADDRESS;
 const LOCKDROP_CONTRACT_ADDRESS_MAINNET = process.env.LOCKDROP_CONTRACT_ADDRESS_MAINNET;
 const LOCKDROP_CONTRACT_ADDRESS_ROPSTEN = process.env.LOCKDROP_CONTRACT_ADDRESS_ROPSTEN;
 const EDGEWARE_PUBLIC_KEY = process.env.EDGEWARE_PUBLIC_KEY;
 const INFURA_PATH = process.env.INFURA_PATH;
 const LOCALHOST_URL = 'http://localhost:8545';
+let REMOTE_URL;
 const ETH_JSON_PASSWORD = process.env.ETH_JSON_PASSWORD;
 const ETH_JSON_VERSION = process.env.ETH_JSON_VERSION;
+let WEB3_INSTANCE;
+let CONTRACT_INSTANCE;
 
 let ETH_PRIVATE_KEY;
 if (process.env.ETH_PRIVATE_KEY) {
   ETH_PRIVATE_KEY = getPrivateKeyFromEnvVar();
+  console.log('Obtained private key from .env');
 }
 
 // Set lockdrop contract address depending on what .env (environment variable) is set.
 // Defaults to Mainnet (if set)
 if (LOCKDROP_CONTRACT_ADDRESS_MAINNET) {
-  program.lockdropContractAddress = LOCKDROP_CONTRACT_ADDRESS_MAINNET;
+  LOCKDROP_CONTRACT_ADDRESS = LOCKDROP_CONTRACT_ADDRESS_MAINNET;
 } else if (LOCKDROP_CONTRACT_ADDRESS_ROPSTEN) {
-  program.lockdropContractAddress = LOCKDROP_CONTRACT_ADDRESS_ROPSTEN;
+  LOCKDROP_CONTRACT_ADDRESS = LOCKDROP_CONTRACT_ADDRESS_ROPSTEN
 } else {
   throw new Error('Input a contract address for the Lockdrop contract');
 }
@@ -214,13 +226,17 @@ if (LOCKDROP_CONTRACT_ADDRESS_MAINNET) {
 // If no remote url provided, default to localhost
 if (!program.remoteUrl) {
   if (INFURA_PATH) {
-    program.remoteUrl = INFURA_PATH;
+    REMOTE_URL = INFURA_PATH;
   } else {
-    program.remoteUrl = LOCALHOST_URL;
+    REMOTE_URL = LOCALHOST_URL;
   }
 }
 
-console.log('program.remoteUrl', program.remoteUrl)
+WEB3_INSTANCE = getWeb3(REMOTE_URL);
+
+CONTRACT_INSTANCE = new WEB3_INSTANCE.eth.Contract(LOCKDROP_JSON.abi, LOCKDROP_CONTRACT_ADDRESS);
+
+setupListeners();
 
 // For all functions that require signing, ensure private key is stored in .env file
 if (program.lock || program.signal || program.unlock || program.unlockAll) {
@@ -229,7 +245,13 @@ if (program.lock || program.signal || program.unlock || program.unlockAll) {
   }
 }
 
-ETH_PRIVATE_KEY = getPrivateKeyFromEncryptedJson();
+if (ETH_JSON_VERSION) {
+  if (!ETH_JSON_PASSWORD) {
+    throw new Error('Please add the password to decrypt your encrypted JSON keystore file to a .env file in the project directory');
+  }
+  ETH_PRIVATE_KEY = getPrivateKeyFromEncryptedJson();
+  console.log('Obtained private key from encrypted JSON file');
+}
 
 // For signaling and locking, ensure an edgeware public address is provided
 if (program.signal || program.lock) {
@@ -260,7 +282,7 @@ if (program.signal || program.lock) {
 
 if (program.allocation) {
   (async function() {
-    const json = await getLockdropAllocation(program.lockdropContractAddress, program.remoteUrl);
+    const json = await getLockdropAllocation();
     console.log(json);
     process.exit(0);
   })();
@@ -273,7 +295,7 @@ if (program.balance) {
       totalETHSignaled,
       totalEffectiveETHLocked,
       totalEffectiveETHSignaled
-    } = await getBalance(program.lockdropContractAddress, program.remoteUrl);
+    } = await getBalance();
     console.log(`Total ETH locked: ${fromWei(totalETHLocked, 'ether')}\nTotal ETH signaled: ${fromWei(totalETHSignaled, 'ether')}`);
     process.exit(0);
   })();
@@ -281,7 +303,7 @@ if (program.balance) {
 
 if (program.ending) {
   (async function() {
-    const timeDiff = await getEnding(program.lockdropContractAddress, program.remoteUrl);
+    const timeDiff = await getEnding();
     console.log(`Ending in ${(timeDiff) / 60} minutes`);
     process.exit(0);
   })();
@@ -300,14 +322,14 @@ if (program.lock) {
   }
   // Submit tx
   (async function() {
-    await lock(program.lockdropContractAddress, program.lockLength, program.lockValue, program.edgewarePublicKey, (!!program.isValidator), program.remoteUrl);
+    await lock(program.lockLength, program.lockValue, (!!program.isValidator));
     process.exit(0);
   })();
 }
 
 if (program.signal) {
   // Check if signaling contract is actually a non-contract address, i.e. the address of the private key
-  const providerAddress = getWeb3(program.remoteUrl).currentProvider.addresses[0];
+  const providerAddress = getWeb3(REMOTE_URL).currentProvider.addresses[0];
   const isSame = (program.signal.toLowerCase() === providerAddress.toLowerCase());
   // If the provided address is a contract address (or not equal to the derived one), a nonce must be provided
   if (!isSame && !program.nonce) {
@@ -319,14 +341,15 @@ if (program.signal) {
   }
   // Submit tx
   (async function() {
-    await signal(program.lockdropContractAddress, program.signal, program.nonce, program.edgewarePublicKey, program.remoteUrl);
+    await signal(program.signal, program.nonce);
     process.exit(0);
   })();
 }
 
+// Unlock a specific lockdrop contract address
 if (program.unlock) {
   (async function() {
-    await unlock(program.unlock, program.remoteUrl);
+    await unlock(program.unlock);
     process.exit(0);
   })();
 
@@ -334,7 +357,7 @@ if (program.unlock) {
 
 if (program.unlockAll) {
   (async function() {
-    await unlockAll(program.lockdropContractAddress, program.remoteUrl);
+    await unlockAll();
     process.exit(0);
   })();
 
@@ -342,7 +365,7 @@ if (program.unlockAll) {
 
 if (program.locksForAddress) {
   (async function() {
-    const locks = await getLocksForAddress(program.locksForAddress, program.lockdropContractAddress, program.remoteUrl);
+    const locks = await getLocksForAddress(program.locksForAddress);
     console.log(locks);
     process.exit(0);
   })();

@@ -85,26 +85,21 @@ const getPrivateKeyFromEnvVar = () => {
 };
 
 const getPrivateKeyFromEncryptedJson = () => {
-  if (ETH_JSON_VERSION) {
-    if (!ETH_JSON_PASSWORD) {
-      throw new Error('Please add the password to decrypt your encrypted JSON keystore file to a .env file in the project directory');
-    }
-    const json = JSON.parse(fs.readFileSync('keystore.json', 'utf8'));
-    let wallet;
-    if (ETH_JSON_VERSION.toLowerCase() === 'ethsale') {
-      wallet = jswallet.fromEthSale(json, ETH_JSON_PASSWORD);
-    } else if (ETH_JSON_VERSION.toLowerCase() === 'v1') {
-      wallet = jswallet.fromV1(json, ETH_JSON_PASSWORD);
-    } else if (ETH_JSON_VERSION.toLowerCase() === 'v3') {
-      wallet = jswallet.fromV3(json, ETH_JSON_PASSWORD);
-    } else {
-      throw new Error('Please add a valid encrypted JSON keystore file version under key ETH_JSON_VERSION to a .env file in the project directory');
-    }
-
-    // Warning: Only use console.log in the example
-    // console.log("Private key " + wallet.getPrivateKey().toString("hex"));
-    return wallet.getPrivateKey().toString("hex");
+  const json = JSON.parse(fs.readFileSync('keystore.json', 'utf8'));
+  let wallet;
+  if (ETH_JSON_VERSION.toLowerCase() === 'ethsale') {
+    wallet = jswallet.fromEthSale(json, ETH_JSON_PASSWORD);
+  } else if (ETH_JSON_VERSION.toLowerCase() === 'v1') {
+    wallet = jswallet.fromV1(json, ETH_JSON_PASSWORD);
+  } else if (ETH_JSON_VERSION.toLowerCase() === 'v3') {
+    wallet = jswallet.fromV3(json, ETH_JSON_PASSWORD);
+  } else {
+    throw new Error('Please add a valid encrypted JSON keystore file version under key ETH_JSON_VERSION to a .env file in the project directory');
   }
+
+  // Warning: Only use console.log in the example
+  // console.log("Private key " + wallet.getPrivateKey().toString("hex"));
+  return wallet.getPrivateKey().toString("hex");
 }
 
 const getTxReceipt = async (txHash, web3) => {
