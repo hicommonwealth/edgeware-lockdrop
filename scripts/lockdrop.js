@@ -25,6 +25,8 @@ program
   .option('--edgewarePublicKey <publicKey>', 'Edgeware Public Key')
   .option('--isValidator', 'A boolean flag indicating intent to be a validator')
   .option('--locksForAddress <userAddress>', 'Returns the history of lock contracts for a participant in the lockdrop')
+  .option('--getNonce', 'Get nonce of lockdrop contract')
+  .option('--send <address>', 'Send  0.1 ETH to arbitrary address')
   .parse(process.argv);
 
 function getWeb3(remoteUrl) {
@@ -60,7 +62,7 @@ async function lock(lockdropContractAddress, length, value, edgewarePublicKey, i
   // Ensure lock lengths are valid from the CLI
   if (['3','6','12'].indexOf(length) === -1) throw new Error('Invalid length, must pass in 3, 6, 12');
   console.log(`locking ${value} ether into Lockdrop contract for ${length} months. Receiver: ${edgewarePublicKey}, Validator: ${isValidator}`);
-  console.log("");
+  console.log(`Contract ${lockdropContractAddress}`);
   const web3 = getWeb3(remoteUrl);
   const contract = new web3.eth.Contract(LOCKDROP_JSON.abi, lockdropContractAddress);
   // Format lock length values as their respective enum values for the lockdrop contract
@@ -184,6 +186,25 @@ async function getLocksForAddress(userAddress, lockdropContractAddress, remoteUr
   });
 
   return await Promise.all(promises);
+}
+
+async function getNonceForContract(lockdropContractAddress, remoteUrl=LOCALHOST_URL) {
+  const web3 = getWeb3(remoteUrl);
+  const nonce = await web3.eth.getTransactionCount(lockdropContractAddress);
+  return nonce;
+}
+
+async function sendTransaction(address, remoteUrl=LOCALHOST_URL) {
+  const web3 = getWeb3(remoteUrl);
+  const params = {
+    from: web3.currentProvider.addresses[0],
+    to: address,
+    value: web3.utils.toWei('0.1', 'ether'),
+  };
+  console.log(params);
+  const txHash = await web3.eth.sendTransaction(params);
+  console.log(txHash);
+  return;
 }
 
 const LOCKDROP_JSON = JSON.parse(fs.readFileSync('./build/contracts/Lockdrop.json').toString());
@@ -343,6 +364,21 @@ if (program.locksForAddress) {
   (async function() {
     const locks = await getLocksForAddress(program.locksForAddress, program.lockdropContractAddress, program.remoteUrl);
     console.log(locks);
+    process.exit(0);
+  })();
+}
+
+if (program.getNonce) {
+  (async function() {
+    const nonce = await getNonceForContract(program.lockdropContractAddress, program.remoteUrl);
+    console.log(`Lockdrop contract nonce ${nonce.toString()}`);
+    process.exit(0);
+  })();
+}
+
+if (program.send) {
+  (async function() {
+    await sendTransaction(program.send, program.remoteUrl);
     process.exit(0);
   })();
 }

@@ -52,8 +52,8 @@ module.exports = {
 
     mainnet: {
       provider: () => new HDWalletProvider(privateKeyHex, `${infuraPath}`),
-      network_id: 1,       // Ropsten's id
-      gas: 8000000,        // Ropsten has a lower block limit than mainnet
+      network_id: 1,       // Mainnet's id
+      gas: 8000000,        // Mainnet gas limit
       confirmations: 2,    // # of confs to wait between deployments. (default: 0)
       timeoutBlocks: 200,  // # of blocks before a deployment times out  (minimum/default: 50)
       skipDryRun: true     // Skip dry run before migrations? (default: false for public nets )

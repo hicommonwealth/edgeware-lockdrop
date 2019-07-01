@@ -38,7 +38,6 @@ contract('Lockdrop-1', (accounts) => {
     const lockEvents = await ldHelpers.getLocks(lockdrop, accounts[1]);
     assert.equal(lockEvents.length, 1);
     assert.equal(lockEvents[0].args.isValidator, true);
-
     const lockStorages = await Promise.all(lockEvents.map(event => {
       return ldHelpers.getLockStorage(web3, event.returnValues.lockAddr);
     }));
