@@ -1,4 +1,5 @@
 const Promise = require('bluebird');
+const keyring = require('@polkadot/keyring');
 const { toBN, fromWei, hexToNumber } = require('web3').utils;
 const bs58 = require('bs58');
 const schedule = require('./schedule');
@@ -131,7 +132,7 @@ const calculateEffectiveSignals = async (web3, lockdropContracts, blockNumber=nu
   let totalETHSignaled = toBN(0);
   let totalEffectiveETHSignaled = toBN(0);
   let signals = {};
-
+  let seenContracts = {};
   let signalEvents = [];
   for (index in lockdropContracts) {
     let events = await lockdropContracts[index].getPastEvents('Signaled', {
@@ -158,32 +159,39 @@ const calculateEffectiveSignals = async (web3, lockdropContracts, blockNumber=nu
   });
   // Resolve promises to ensure all inner async functions have finished
   let balances = await Promise.all(promises);
+
   signalEvents.forEach((event, index) => {
     const data = event.returnValues;
-    // Get value for each signal event and add it to the collection
-    let value = getEffectiveValue(balances[index], 'signaling');
-    // Add value to total signaled ETH
-    totalETHSignaled = totalETHSignaled.add(toBN(balances[index]));
-    totalEffectiveETHSignaled = totalEffectiveETHSignaled.add(value);
-    // Iterate over signals, partition reward into delayed and immediate amounts
-    if (data.edgewareAddr in signals) {
-      signals[data.edgewareAddr] = {
-        signalAmt: toBN(balances[index]).add(toBN(signals[data.edgewareAddr].signalAmt)).toString(),
-        delayedEffectiveValue: toBN(signals[data.edgewareAddr]
-                                .delayedEffectiveValue)
-                                .add(value.mul(toBN(75)).div(toBN(100)))
-                                .toString(),
-        immediateEffectiveValue: toBN(signals[data.edgewareAddr]
-                                  .immediateEffectiveValue)
-                                  .add(value.mul(toBN(25)).div(toBN(100)))
+    // if contract address has been seen (it is in a previously processed signal)
+    // then we ignore it; this means that we only acknolwedge the first signal
+    // for a given address.
+    if (!(data.contractAddr in seenContracts)) {
+      seenContracts[data.contractAddr] = true;
+      // Get value for each signal event and add it to the collection
+      let value = getEffectiveValue(balances[index], 'signaling');
+      // Add value to total signaled ETH
+      totalETHSignaled = totalETHSignaled.add(toBN(balances[index]));
+      totalEffectiveETHSignaled = totalEffectiveETHSignaled.add(value);
+      // Iterate over signals, partition reward into delayed and immediate amounts
+      if (data.edgewareAddr in signals) {
+        signals[data.edgewareAddr] = {
+          signalAmt: toBN(balances[index]).add(toBN(signals[data.edgewareAddr].signalAmt)).toString(),
+          delayedEffectiveValue: toBN(signals[data.edgewareAddr]
+                                  .delayedEffectiveValue)
+                                  .add(value.mul(toBN(75)).div(toBN(100)))
                                   .toString(),
-      };
-    } else {
-      signals[data.edgewareAddr] = {
-        signalAmt: toBN(balances[index]).toString(),
-        delayedEffectiveValue: value.mul(toBN(75)).div(toBN(100)).toString(),
-        immediateEffectiveValue: value.mul(toBN(25)).div(toBN(100)).toString(),
-      };
+          immediateEffectiveValue: toBN(signals[data.edgewareAddr]
+                                    .immediateEffectiveValue)
+                                    .add(value.mul(toBN(25)).div(toBN(100)))
+                                    .toString(),
+        };
+      } else {
+        signals[data.edgewareAddr] = {
+          signalAmt: toBN(balances[index]).toString(),
+          delayedEffectiveValue: value.mul(toBN(75)).div(toBN(100)).toString(),
+          immediateEffectiveValue: value.mul(toBN(25)).div(toBN(100)).toString(),
+        };
+      }
     }
   });
   // Return signals and total ETH signaled
@@ -205,11 +213,13 @@ const getLockStorage = async (web3, lockAddress) => {
 const selectEdgewareValidators = (validatingLocks, totalAllocation, totalEffectiveETH, numOfValidators) => {
   const sortable = [];
   // Add the calculated edgeware balances with the respective key to a collection
+  // TODO: PARSE OUT KEYS OF VALIDATORS
   for (var key in validatingLocks) {
-      sortable.push([
-        `0x${key.slice(0,-4).slice(4)}`,
-        toBN(validatingLocks[key].effectiveValue).mul(toBN(totalAllocation)).div(totalEffectiveETH)
-      ]);
+    const keys = key.slice(2).match(/.{1,64}/g).map(key => `0x${key}`);;
+    sortable.push([
+      `0x${key.slice(0,-4).slice(4)}`,
+      toBN(validatingLocks[key].effectiveValue).mul(toBN(totalAllocation)).div(totalEffectiveETH)
+    ]);
   }
 
   // Sort and take the top "numOfValidators" from the collection
@@ -218,47 +228,74 @@ const selectEdgewareValidators = (validatingLocks, totalAllocation, totalEffecti
     .slice(0, numOfValidators);
 };
 
-const getEdgewareBalanceObjects = (locks, signals, totalAllocation, totalEffectiveETH) => {
+const getEdgewareBalanceObjects = (locks, signals, totalAllocation, totalEffectiveETH, existentialBalance=100000000000000) => {
   let balances = [];
   let vesting = [];
+  // handle locks separately than signals at first, then we'll scan over all
+  // entries and ensure that there are only unique entries in the collections.
   for (var key in locks) {
-    if (key in signals) {
-      // if key also signaled ETH, add immediate effective signal value to the locked value
-      // FIXME: Proper base58 encoding once we receive future network ID
-      const summation = toBN(locks[key].effectiveValue).add(toBN(signals[key].immediateEffectiveValue));
-      balances.push([
-        bs58.encode(new Buffer(key.slice(2), 'hex')),
-        mulByAllocationFraction(summation, totalAllocation, totalEffectiveETH),
-      ]);
+    let keys;
+    if (key.length === 194) {
+      keys = key.slice(2).match(/.{1,64}/g).map(key => `0x${key}`);
+      // remove existential balance from this lock for controller account
+      if (toBN(locks[key].effectiveValue).lt(toBN(existentialBalance))) {
+        console.log(key, keys)
+      }
+      // ensure encodings work
+      try {
+        const encoded1 = keyring.encodeAddress(keys[0]);
+        const encoded2 = keyring.encodeAddress(keys[1]);
+        // add entry in for stash account
+        balances.push([
+          keyring.encodeAddress(keys[0]),
+          mulByAllocationFraction(toBN(locks[key].effectiveValue).sub(toBN(existentialBalance)), totalAllocation, totalEffectiveETH).toString(),
+        ]);
+        // add entry in for controller account with minimal existential balance
+        balances.push([
+          keyring.encodeAddress(keys[1]),
+          mulByAllocationFraction(toBN(existentialBalance), totalAllocation, totalEffectiveETH).toString(),
+        ])
+      } catch(e) {
+        console.log(e);
+        console.log(`Error on locks: ${keys[0]} or ${keys[1]}`);
+      }
     } else {
-      balances.push([
-        bs58.encode(new Buffer(key.slice(2), 'hex')),
-        mulByAllocationFraction(locks[key].effectiveValue, totalAllocation, totalEffectiveETH).toString(),
-      ]);
+      try {
+        const encoded = keyring.encodeAddress(key);
+        balances.push([
+          encoded,
+          mulByAllocationFraction(locks[key].effectiveValue, totalAllocation, totalEffectiveETH).toString(),
+        ]);
+      } catch(e) {
+        console.log(e);
+        console.log(`Error on locks: ${key}`);
+      }
     }
   }
-
+  // handle signal entries
   for (var key in signals) {
-    if (key in locks) {
-      // if key locked, then we only need to create a vesting record as we created the balances record above
-      vesting.push([
-        bs58.encode(new Buffer(key.slice(2), 'hex')),
-        mulByAllocationFraction(signals[key].delayedEffectiveValue, totalAllocation, totalEffectiveETH).toString(),
-        68400 * 365 // 1 year FIXME: see what vesting in substrate does
-      ]);
-    } else {
+    try {
+      let keys = [key];
+      // allocate signals to first key if multiple submitted
+      if (key.length === 194) {
+        keys = key.slice(2).match(/.{1,64}/g).map(key => `0x${key}`);
+      }
+      const encoded = keyring.encodeAddress(keys[0]);
       // if key did not lock, then we need to create balances and vesting records
       // create balances record
       balances.push([
-        bs58.encode(new Buffer(key.slice(2), 'hex')),
+        encoded,
         mulByAllocationFraction(signals[key].immediateEffectiveValue, totalAllocation, totalEffectiveETH).toString(),
       ]);
       // create vesting record
       vesting.push([
-        bs58.encode(new Buffer(key.slice(2), 'hex')),
+        encoded,
         mulByAllocationFraction(signals[key].delayedEffectiveValue, totalAllocation, totalEffectiveETH).toString(),
         68400 * 365 // 1 year FIXME: see what vesting in substrate does
       ]);
+    } catch(e) {
+      console.log(e);
+      console.log(`Error on signals: ${key}`);
     }
   }
 
