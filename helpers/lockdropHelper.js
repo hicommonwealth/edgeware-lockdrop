@@ -148,42 +148,44 @@ const calculateEffectiveSignals = async (web3, lockdropContracts, blockNumber=nu
     let balance;
     try {
       if (blockNumber) {
-        balance = await web3.eth.getBalance(data.contractAddr, blockNumber);
+        return await web3.eth.getBalance(data.contractAddr, blockNumber);
       } else {
-        balance = await web3.eth.getBalance(data.contractAddr);
+        return await web3.eth.getBalance(data.contractAddr);
       }
-      // Get value for each signal event and add it to the collection
-      let value = getEffectiveValue(balance, 'signaling');
-      // Add value to total signaled ETH
-      totalETHSignaled = totalETHSignaled.add(toBN(balance));
-      totalEffectiveETHSignaled = totalEffectiveETHSignaled.add(value);
-      // Iterate over signals, partition reward into delayed and immediate amounts
-      if (data.edgewareAddr in signals) {
-        signals[data.edgewareAddr] = {
-          signalAmt: toBN(balance).add(toBN(signals[data.edgewareAddr].signalAmt)).toString(),
-          delayedEffectiveValue: toBN(signals[data.edgewareAddr]
-                                  .delayedEffectiveValue)
-                                  .add(value.mul(toBN(75)).div(toBN(100)))
-                                  .toString(),
-          immediateEffectiveValue: toBN(signals[data.edgewareAddr]
-                                    .immediateEffectiveValue)
-                                    .add(value.mul(toBN(25)).div(toBN(100)))
-                                    .toString(),
-        };
-      } else {
-        signals[data.edgewareAddr] = {
-          signalAmt: toBN(balance).toString(),
-          delayedEffectiveValue: value.mul(toBN(75)).div(toBN(100)).toString(),
-          immediateEffectiveValue: value.mul(toBN(25)).div(toBN(100)).toString(),
-        };
-      }
-    } catch (e) {
-       
+    } catch(e) {
+      return 0;
     }
   });
-
   // Resolve promises to ensure all inner async functions have finished
-  await Promise.all(promises);
+  let balances = await Promise.all(promises);
+  signalEvents.forEach((event, index) => {
+    const data = event.returnValues;
+    // Get value for each signal event and add it to the collection
+    let value = getEffectiveValue(balances[index], 'signaling');
+    // Add value to total signaled ETH
+    totalETHSignaled = totalETHSignaled.add(toBN(balances[index]));
+    totalEffectiveETHSignaled = totalEffectiveETHSignaled.add(value);
+    // Iterate over signals, partition reward into delayed and immediate amounts
+    if (data.edgewareAddr in signals) {
+      signals[data.edgewareAddr] = {
+        signalAmt: toBN(balances[index]).add(toBN(signals[data.edgewareAddr].signalAmt)).toString(),
+        delayedEffectiveValue: toBN(signals[data.edgewareAddr]
+                                .delayedEffectiveValue)
+                                .add(value.mul(toBN(75)).div(toBN(100)))
+                                .toString(),
+        immediateEffectiveValue: toBN(signals[data.edgewareAddr]
+                                  .immediateEffectiveValue)
+                                  .add(value.mul(toBN(25)).div(toBN(100)))
+                                  .toString(),
+      };
+    } else {
+      signals[data.edgewareAddr] = {
+        signalAmt: toBN(balances[index]).toString(),
+        delayedEffectiveValue: value.mul(toBN(75)).div(toBN(100)).toString(),
+        immediateEffectiveValue: value.mul(toBN(25)).div(toBN(100)).toString(),
+      };
+    }
+  });
   // Return signals and total ETH signaled
   return { signals, totalETHSignaled, totalEffectiveETHSignaled }
 }
