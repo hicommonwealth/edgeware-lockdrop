@@ -302,6 +302,50 @@ const getEdgewareBalanceObjects = (locks, signals, totalAllocation, totalEffecti
   return { balances: balances, vesting: vesting };
 };
 
+const combineToUnique = (balances, vesting) => {
+  let balancesMap = {};
+  let vestingMap = {};
+  balances.forEach(entry => {
+    let account = entry[0];
+    let amount = entry[1];
+
+    if (account in balancesMap) {
+      balancesMap[account] = toBN(balancesMap[account]).add(toBN(amount)).toString();
+    } else {
+      balancesMap[account] = amount
+    }
+  });
+
+  vesting.forEach(entry => {
+    let account = entry[0];
+    let amount = entry[1];
+    if (account in vestingMap) {
+      vestingMap[account] = toBN(vestingMap[account]).add(toBN(amount)).toString();
+    } else {
+      vestingMap[account] = amount
+    }
+  });
+
+  let newBalances = []
+  let newVesting = [];
+  Object.keys(balancesMap).forEach(key => {
+    newBalances.push([
+      key,
+      balancesMap[key],
+    ]);
+  });
+
+  Object.keys(vestingMap).forEach(key => {
+    newVesting.push([
+      key,
+      vestingMap[key],
+      68400 * 365 // 1 year FIXME: see what vesting in substrate does
+    ]);
+  });
+
+  return { balances: newBalances, vesting: newVesting };
+}
+
 const mulByAllocationFraction = (amount, totalAllocation, totalEffectiveETH) => {
   return toBN(amount).mul(toBN(totalAllocation)).div(toBN(totalEffectiveETH));
 }
@@ -316,4 +360,5 @@ module.exports = {
   getLockStorage,
   selectEdgewareValidators,
   getEdgewareBalanceObjects,
+  combineToUnique,
 };

@@ -59,7 +59,8 @@ async function getLockdropAllocation(lockdropContractAddresses, remoteUrl=LOCALH
   console.log(totalETHSignaled.toString());
   const totalEffectiveETH = totalEffectiveETHLocked.add(totalEffectiveETHSignaled);
   let json = await ldHelpers.getEdgewareBalanceObjects(locks, signals, totalAllocation, totalEffectiveETH);
-  return json;
+  let { balances, vesting } = await ldHelpers.combineToUnique(json.balances, json.vesting);
+  return { balances, vesting };
 };
 
 async function lock(lockdropContractAddress, length, value, edgewarePublicKey, isValidator=false, remoteUrl=LOCALHOST_URL) {
