@@ -211,13 +211,14 @@ const getLockStorage = async (web3, lockAddress) => {
 const selectEdgewareValidators = (validatingLocks, totalAllocation, totalEffectiveETH, numOfValidators) => {
   const sortable = [];
   // Add the calculated edgeware balances with the respective key to a collection
-  // TODO: PARSE OUT KEYS OF VALIDATORS
   for (var key in validatingLocks) {
     const keys = key.slice(2).match(/.{1,64}/g).map(key => `0x${key}`);;
-    sortable.push([
-      keys,
-      toBN(validatingLocks[key].effectiveValue).mul(toBN(totalAllocation)).div(totalEffectiveETH)
-    ]);
+    if (keys.length === 3) {
+      sortable.push([
+        keys,
+        toBN(validatingLocks[key].effectiveValue).mul(toBN(totalAllocation)).div(totalEffectiveETH)
+      ]);
+    }
   }
 
   // Sort and take the top "numOfValidators" from the collection
@@ -232,7 +233,7 @@ const selectEdgewareValidators = (validatingLocks, totalAllocation, totalEffecti
     });
 };
 
-const getEdgewareBalanceObjects = (locks, signals, totalAllocation, totalEffectiveETH, existentialBalance=100000000000000) => {
+const getEdgewareBalanceObjects = (locks, signals, totalAllocation, totalEffectiveETH, existentialBalance=1000000000000000) => {
   let balances = [];
   let vesting = [];
   // handle locks separately than signals at first, then we'll scan over all
@@ -242,7 +243,7 @@ const getEdgewareBalanceObjects = (locks, signals, totalAllocation, totalEffecti
     if (key.length === 194) {
       keys = key.slice(2).match(/.{1,64}/g).map(key => `0x${key}`);
       // remove existential balance from this lock for controller account
-      if (toBN(locks[key].effectiveValue).lt(toBN(existentialBalance))) {
+      if (toBN(locks[key].effectiveValue).mul(toBN(2)).lte(toBN(existentialBalance))) {
         console.log(key, keys)
       }
       // ensure encodings work
@@ -251,12 +252,12 @@ const getEdgewareBalanceObjects = (locks, signals, totalAllocation, totalEffecti
         const encoded2 = keyring.encodeAddress(keys[1]);
         // add entry in for stash account
         balances.push([
-          keyring.encodeAddress(keys[0]),
+          keys[0].slice(2),
           mulByAllocationFraction(toBN(locks[key].effectiveValue).sub(toBN(existentialBalance)), totalAllocation, totalEffectiveETH).toString(),
         ]);
         // add entry in for controller account with minimal existential balance
         balances.push([
-          keyring.encodeAddress(keys[1]),
+          keys[1].slice(2),
           mulByAllocationFraction(toBN(existentialBalance), totalAllocation, totalEffectiveETH).toString(),
         ])
       } catch(e) {
@@ -267,7 +268,7 @@ const getEdgewareBalanceObjects = (locks, signals, totalAllocation, totalEffecti
       try {
         const encoded = keyring.encodeAddress(key);
         balances.push([
-          encoded,
+          key.slice(2),
           mulByAllocationFraction(locks[key].effectiveValue, totalAllocation, totalEffectiveETH).toString(),
         ]);
       } catch(e) {
@@ -289,12 +290,12 @@ const getEdgewareBalanceObjects = (locks, signals, totalAllocation, totalEffecti
       // create balances record
       const totalAmount = toBN(signals[key].immediateEffectiveValue).add(toBN(signals[key].delayedEffectiveValue));
       balances.push([
-        encoded,
+        keys[0].slice(2),
         mulByAllocationFraction(totalAmount, totalAllocation, totalEffectiveETH).toString(),
       ]);
       // create vesting record
       vesting.push([
-        encoded,
+        keys[0].slice(2),
         // 5256000 for mainnet launch
         52560,
         0,
@@ -345,7 +346,7 @@ const combineToUnique = (balances, vesting) => {
   let newVesting = [];
   let total = toBN(0);
   Object.keys(balancesMap).forEach(key => {
-    total.add(toBN(balancesMap[key]));
+    total = total.add(toBN(balancesMap[key]));
     newBalances.push([
       key,
       balancesMap[key],
@@ -361,7 +362,7 @@ const combineToUnique = (balances, vesting) => {
       vestingMap[key],
     ]);
   });
-  console.log(total.toString());
+  console.log(`Total: ${total.toString()}`);
   return { balances: newBalances, vesting: newVesting };
 }
 

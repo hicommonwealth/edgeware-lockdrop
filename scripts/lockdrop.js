@@ -46,7 +46,7 @@ async function getCurrentTimestamp(remoteUrl=LOCALHOST_URL) {
   return block.timestamp;
 }
 
-async function getLockdropAllocation(lockdropContractAddresses, remoteUrl=LOCALHOST_URL, totalAllocation='5000000000000000000000000') {
+async function getLockdropAllocation(lockdropContractAddresses, remoteUrl=LOCALHOST_URL, totalAllocation='4500000000000000000000000000') {
   console.log('Fetching Lockdrop locked locks...');
   console.log("");
   const web3 = getWeb3(remoteUrl);
