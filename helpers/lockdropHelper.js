@@ -75,8 +75,6 @@ const calculateEffectiveLocks = async (lockdropContracts) => {
     lockEvents = [ ...lockEvents, ...events ];
   }
 
-
-
   // For truffle tests
   let lockdropStartTime;
   if (typeof lockdropContracts[0].LOCK_START_TIME === 'function') {
@@ -217,7 +215,7 @@ const selectEdgewareValidators = (validatingLocks, totalAllocation, totalEffecti
   for (var key in validatingLocks) {
     const keys = key.slice(2).match(/.{1,64}/g).map(key => `0x${key}`);;
     sortable.push([
-      `0x${key.slice(0,-4).slice(4)}`,
+      keys,
       toBN(validatingLocks[key].effectiveValue).mul(toBN(totalAllocation)).div(totalEffectiveETH)
     ]);
   }
@@ -225,7 +223,13 @@ const selectEdgewareValidators = (validatingLocks, totalAllocation, totalEffecti
   // Sort and take the top "numOfValidators" from the collection
   return sortable
     .sort((a,b) => (a[1] > b[1]) ? 1 : ((b[1] > a[1]) ? -1 : 0))
-    .slice(0, numOfValidators);
+    .slice(0, numOfValidators)
+    .map(v => {
+      return ([
+        ...v[0].map(k => (k.slice(2))), // stash, controller, session
+        v[1].toString(), // staked balance
+      ]);
+    });
 };
 
 const getEdgewareBalanceObjects = (locks, signals, totalAllocation, totalEffectiveETH, existentialBalance=100000000000000) => {
@@ -283,15 +287,18 @@ const getEdgewareBalanceObjects = (locks, signals, totalAllocation, totalEffecti
       const encoded = keyring.encodeAddress(keys[0]);
       // if key did not lock, then we need to create balances and vesting records
       // create balances record
+      const totalAmount = toBN(signals[key].immediateEffectiveValue).add(toBN(signals[key].delayedEffectiveValue));
       balances.push([
         encoded,
-        mulByAllocationFraction(signals[key].immediateEffectiveValue, totalAllocation, totalEffectiveETH).toString(),
+        mulByAllocationFraction(totalAmount, totalAllocation, totalEffectiveETH).toString(),
       ]);
       // create vesting record
       vesting.push([
         encoded,
-        mulByAllocationFraction(signals[key].delayedEffectiveValue, totalAllocation, totalEffectiveETH).toString(),
-        68400 * 365 // 1 year FIXME: see what vesting in substrate does
+        // 5256000 for mainnet launch
+        52560,
+        0,
+        toBN(signals[key].immediateEffectiveValue).toString(),
       ]);
     } catch(e) {
       console.log(e);
@@ -303,7 +310,15 @@ const getEdgewareBalanceObjects = (locks, signals, totalAllocation, totalEffecti
 };
 
 const combineToUnique = (balances, vesting) => {
-  let balancesMap = {};
+  let balancesMap = {
+    // "1": ,
+    // "2": ,
+    // "3": ,
+    // "4": ,
+    // "5": ,
+    // "6": ,
+    // "7": ,
+  };
   let vestingMap = {};
   balances.forEach(entry => {
     let account = entry[0];
@@ -318,7 +333,7 @@ const combineToUnique = (balances, vesting) => {
 
   vesting.forEach(entry => {
     let account = entry[0];
-    let amount = entry[1];
+    let amount = entry[3];
     if (account in vestingMap) {
       vestingMap[account] = toBN(vestingMap[account]).add(toBN(amount)).toString();
     } else {
@@ -328,7 +343,9 @@ const combineToUnique = (balances, vesting) => {
 
   let newBalances = []
   let newVesting = [];
+  let total = toBN(0);
   Object.keys(balancesMap).forEach(key => {
+    total.add(toBN(balancesMap[key]));
     newBalances.push([
       key,
       balancesMap[key],
@@ -338,11 +355,13 @@ const combineToUnique = (balances, vesting) => {
   Object.keys(vestingMap).forEach(key => {
     newVesting.push([
       key,
+      // 5256000 for mainnet launch
+      52560,
+      0,
       vestingMap[key],
-      68400 * 365 // 1 year FIXME: see what vesting in substrate does
     ]);
   });
-
+  console.log(total.toString());
   return { balances: newBalances, vesting: newVesting };
 }
 

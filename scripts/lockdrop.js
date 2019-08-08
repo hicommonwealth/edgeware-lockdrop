@@ -53,14 +53,15 @@ async function getLockdropAllocation(lockdropContractAddresses, remoteUrl=LOCALH
   const contracts = lockdropContractAddresses.map(addr => {
     return new web3.eth.Contract(LOCKDROP_JSON.abi, addr)
   });
-  const { locks, totalETHLocked, totalEffectiveETHLocked } = await ldHelpers.calculateEffectiveLocks(contracts);
+  const { locks, validatingLocks, totalETHLocked, totalEffectiveETHLocked } = await ldHelpers.calculateEffectiveLocks(contracts);
   console.log(totalETHLocked.toString());
   const { signals, totalETHSignaled, totalEffectiveETHSignaled } = await ldHelpers.calculateEffectiveSignals(web3, contracts);
   console.log(totalETHSignaled.toString());
   const totalEffectiveETH = totalEffectiveETHLocked.add(totalEffectiveETHSignaled);
   let json = await ldHelpers.getEdgewareBalanceObjects(locks, signals, totalAllocation, totalEffectiveETH);
   let { balances, vesting } = await ldHelpers.combineToUnique(json.balances, json.vesting);
-  return { balances, vesting };
+  let validators = ldHelpers.selectEdgewareValidators(validatingLocks, totalAllocation, totalEffectiveETH, 100)
+  return { balances, vesting, validators };
 };
 
 async function lock(lockdropContractAddress, length, value, edgewarePublicKey, isValidator=false, remoteUrl=LOCALHOST_URL) {
@@ -282,7 +283,7 @@ if (program.signal || program.lock) {
 if (program.allocation) {
   (async function() {
     const json = await getLockdropAllocation(program.lockdropContractAddresses, program.remoteUrl);
-    console.log(json);
+    fs.writeFileSync('spec.json', JSON.stringify(json, null, 4));
     process.exit(0);
   })();
 }
