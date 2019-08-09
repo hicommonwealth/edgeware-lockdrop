@@ -46,16 +46,22 @@ async function getCurrentTimestamp(remoteUrl=LOCALHOST_URL) {
   return block.timestamp;
 }
 
-async function getLockdropAllocation(lockdropContractAddress, remoteUrl=LOCALHOST_URL, totalAllocation='5000000000000000000000000') {
+async function getLockdropAllocation(lockdropContractAddresses, remoteUrl=LOCALHOST_URL, totalAllocation='4500000000000000000000000000') {
   console.log('Fetching Lockdrop locked locks...');
   console.log("");
   const web3 = getWeb3(remoteUrl);
-  const contract = new web3.eth.Contract(LOCKDROP_JSON.abi, lockdropContractAddress);
-  const { locks, totalEffectiveETHLocked } = await ldHelpers.calculateEffectiveLocks(contract);
-  const { signals, totalEffectiveETHSignaled } = await ldHelpers.calculateEffectiveSignals(web3, contract);
+  const contracts = lockdropContractAddresses.map(addr => {
+    return new web3.eth.Contract(LOCKDROP_JSON.abi, addr)
+  });
+  const { locks, validatingLocks, totalETHLocked, totalEffectiveETHLocked } = await ldHelpers.calculateEffectiveLocks(contracts);
+  console.log(totalETHLocked.toString());
+  const { signals, totalETHSignaled, totalEffectiveETHSignaled } = await ldHelpers.calculateEffectiveSignals(web3, contracts);
+  console.log(totalETHSignaled.toString());
   const totalEffectiveETH = totalEffectiveETHLocked.add(totalEffectiveETHSignaled);
   let json = await ldHelpers.getEdgewareBalanceObjects(locks, signals, totalAllocation, totalEffectiveETH);
-  return json;
+  let { balances, vesting } = await ldHelpers.combineToUnique(json.balances, json.vesting);
+  let validators = ldHelpers.selectEdgewareValidators(validatingLocks, totalAllocation, totalEffectiveETH, 100)
+  return { balances, vesting, validators };
 };
 
 async function lock(lockdropContractAddress, length, value, edgewarePublicKey, isValidator=false, remoteUrl=LOCALHOST_URL) {
@@ -208,7 +214,7 @@ async function sendTransaction(address, remoteUrl=LOCALHOST_URL) {
 }
 
 const LOCKDROP_JSON = JSON.parse(fs.readFileSync('./build/contracts/Lockdrop.json').toString());
-const LOCKDROP_CONTRACT_ADDRESS = process.env.LOCKDROP_CONTRACT_ADDRESS;
+const LOCKDROP_CONTRACT_ADDRESSES = process.env.LOCKDROP_CONTRACT_ADDRESSES.split(',');
 const EDGEWARE_PUBLIC_KEY = process.env.EDGEWARE_PUBLIC_KEY;
 const INFURA_PATH = process.env.INFURA_PATH;
 const LOCALHOST_URL = 'http://localhost:8545';
@@ -221,18 +227,14 @@ if (process.env.ETH_PRIVATE_KEY) {
     : process.env.ETH_PRIVATE_KEY.slice(2);
 }
 
-// At least one should be populated
-if (LOCKDROP_CONTRACT_ADDRESS) {
-  program.lockdropContractAddress = LOCKDROP_CONTRACT_ADDRESS;
-}
-
-if (!program.lockdropContractAddress && !LOCKDROP_CONTRACT_ADDRESS) {
+if (!program.lockdropContractAddress && !LOCKDROP_CONTRACT_ADDRESSES) {
   throw new Error('Input a contract address for the Lockdrop contract');
 }
 
 // If passed in through .env
-if (LOCKDROP_CONTRACT_ADDRESS) {
-  program.lockdropContractAddress = LOCKDROP_CONTRACT_ADDRESS
+if (LOCKDROP_CONTRACT_ADDRESSES) {
+  program.lockdropContractAddress = LOCKDROP_CONTRACT_ADDRESSES[0]
+  program.lockdropContractAddresses = LOCKDROP_CONTRACT_ADDRESSES
 }
 
 // If no remote url provided, default to localhost
@@ -280,8 +282,8 @@ if (program.signal || program.lock) {
 
 if (program.allocation) {
   (async function() {
-    const json = await getLockdropAllocation(program.lockdropContractAddress, program.remoteUrl);
-    console.log(json);
+    const json = await getLockdropAllocation(program.lockdropContractAddresses, program.remoteUrl);
+    fs.writeFileSync('spec.json', JSON.stringify(json, null, 4));
     process.exit(0);
   })();
 }
