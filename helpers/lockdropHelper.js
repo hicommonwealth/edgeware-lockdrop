@@ -285,9 +285,6 @@ const getEdgewareBalanceObjects = (locks, signals, totalAllocation, totalEffecti
       if (key.length === 194) {
         keys = key.slice(2).match(/.{1,64}/g).map(key => `0x${key}`);
       }
-      if (keys[0].includes('10b7ca93db054d5f36a8ef9c9a9324efac188566501b9741f0b197849aa3214b')) {
-        console.log(signals[key]);
-      }
       const encoded = keyring.encodeAddress(keys[0]);
       // if key did not lock, then we need to create balances and vesting records
       // create balances record
