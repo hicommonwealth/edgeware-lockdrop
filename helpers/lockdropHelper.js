@@ -208,7 +208,7 @@ const getLockStorage = async (web3, lockAddress) => {
   });
 };
 
-const selectEdgewareValidators = (validatingLocks, totalAllocation, totalEffectiveETH, numOfValidators) => {
+const selectEdgewareValidators = (validatingLocks, totalAllocation, totalEffectiveETH, numOfValidators, existentialBalance=100000000000000) => {
   const sortable = [];
   // Add the calculated edgeware balances with the respective key to a collection
   for (var key in validatingLocks) {
@@ -216,7 +216,7 @@ const selectEdgewareValidators = (validatingLocks, totalAllocation, totalEffecti
     if (keys.length === 3) {
       sortable.push([
         keys,
-        toBN(validatingLocks[key].effectiveValue).mul(toBN(totalAllocation)).div(totalEffectiveETH)
+        toBN(validatingLocks[key].effectiveValue).sub(toBN(existentialBalance)).mul(toBN(totalAllocation)).div(totalEffectiveETH)
       ]);
     }
   }
@@ -233,7 +233,7 @@ const selectEdgewareValidators = (validatingLocks, totalAllocation, totalEffecti
     });
 };
 
-const getEdgewareBalanceObjects = (locks, signals, totalAllocation, totalEffectiveETH, existentialBalance=1000000000000000) => {
+const getEdgewareBalanceObjects = (locks, signals, totalAllocation, totalEffectiveETH, existentialBalance=100000000000000) => {
   let balances = [];
   let vesting = [];
   // handle locks separately than signals at first, then we'll scan over all
@@ -243,7 +243,7 @@ const getEdgewareBalanceObjects = (locks, signals, totalAllocation, totalEffecti
     if (key.length === 194) {
       keys = key.slice(2).match(/.{1,64}/g).map(key => `0x${key}`);
       // remove existential balance from this lock for controller account
-      if (toBN(locks[key].effectiveValue).mul(toBN(2)).lte(toBN(existentialBalance))) {
+      if (toBN(locks[key].effectiveValue).lte(toBN(existentialBalance))) {
         console.log(key, keys)
       }
       // ensure encodings work
