@@ -223,7 +223,7 @@ const selectEdgewareValidators = (validatingLocks, totalAllocation, totalEffecti
 
   // Sort and take the top "numOfValidators" from the collection
   return sortable
-    .sort((a,b) => (a[1] > b[1]) ? 1 : ((b[1] > a[1]) ? -1 : 0))
+    .sort((a,b) => (a[1].lt(b[1])) ? 1 : ((b[1].lt(a[1])) ? -1 : 0))
     .slice(0, numOfValidators)
     .map(v => {
       return ([
