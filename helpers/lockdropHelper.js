@@ -126,7 +126,7 @@ const calculateEffectiveLocks = async (lockdropContracts) => {
   return { validatingLocks, locks, totalETHLocked, totalEffectiveETHLocked };
 };
 
-const calculateEffectiveSignals = async (web3, lockdropContracts, blockNumber=null) => {
+const calculateEffectiveSignals = async (web3, lockdropContracts, blockNumber=8461046) => {
   let totalETHSignaled = toBN(0);
   let totalEffectiveETHSignaled = toBN(0);
   let signals = {};
@@ -144,16 +144,21 @@ const calculateEffectiveSignals = async (web3, lockdropContracts, blockNumber=nu
   const promises = signalEvents.map(async (event) => {
     const data = event.returnValues;
     // Get balance at block that lockdrop ends
-    let balance;
-    try {
-      if (blockNumber) {
-        return await web3.eth.getBalance(data.contractAddr, blockNumber);
-      } else {
-        return await web3.eth.getBalance(data.contractAddr);
+    let balance = -1;
+    while (balance == -1) {
+      try {
+        if (blockNumber) {
+          balance = await web3.eth.getBalance(data.contractAddr, blockNumber);
+        } else {
+          balance = await web3.eth.getBalance(data.contractAddr);
+        }
+      } catch(e) {
+        console.log(`${balance} Couldn't find: ${JSON.stringify(data)}`);
+        await Promise.delay(5000);
       }
-    } catch(e) {
-      return 0;
     }
+
+    return balance;
   });
   // Resolve promises to ensure all inner async functions have finished
   let balances = await Promise.all(promises);
@@ -224,7 +229,6 @@ const selectEdgewareValidators = (validatingLocks, totalAllocation, totalEffecti
   // Sort and take the top "numOfValidators" from the collection
   return sortable
     .sort((a,b) => (a[1].lt(b[1])) ? 1 : ((b[1].lt(a[1])) ? -1 : 0))
-    .slice(0, numOfValidators)
     .map(v => {
       return ([
         ...v[0].map(k => (k.slice(2))), // stash, controller, session

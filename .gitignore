@@ -3,4 +3,4 @@ build
 node_modules
 .env
 *.json
-artefacts/*.json
+artifacts/*.json
