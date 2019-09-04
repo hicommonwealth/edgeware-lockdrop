@@ -58,6 +58,7 @@ async function getLockdropAllocation(lockdropContractAddresses, remoteUrl=LOCALH
   const { signals, totalETHSignaled, totalEffectiveETHSignaled } = await ldHelpers.calculateEffectiveSignals(web3, contracts);
   fs.writeFileSync('artifacts/signalData.json', JSON.stringify({ signals, totalETHSignaled, totalEffectiveETHSignaled }, null, 4));
   const totalEffectiveETH = totalEffectiveETHLocked.add(totalEffectiveETHSignaled);
+  console.log(totalEffectiveETH.toString(), totalETHLocked.toString(), totalETHSignaled.toString());
   let json = await ldHelpers.getEdgewareBalanceObjects(locks, signals, totalAllocation, totalEffectiveETH);
   let { balances, vesting } = await ldHelpers.combineToUnique(json.balances, json.vesting);
   let validators = ldHelpers.selectEdgewareValidators(validatingLocks, totalAllocation, totalEffectiveETH, 75)

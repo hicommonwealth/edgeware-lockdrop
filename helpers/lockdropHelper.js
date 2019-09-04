@@ -173,26 +173,22 @@ const calculateEffectiveSignals = async (web3, lockdropContracts, blockNumber=84
       // Get value for each signal event and add it to the collection
       let value = getEffectiveValue(balances[index], 'signaling');
       // Add value to total signaled ETH
+
       totalETHSignaled = totalETHSignaled.add(toBN(balances[index]));
       totalEffectiveETHSignaled = totalEffectiveETHSignaled.add(value);
       // Iterate over signals, partition reward into delayed and immediate amounts
       if (data.edgewareAddr in signals) {
         signals[data.edgewareAddr] = {
           signalAmt: toBN(balances[index]).add(toBN(signals[data.edgewareAddr].signalAmt)).toString(),
-          delayedEffectiveValue: toBN(signals[data.edgewareAddr]
-                                  .delayedEffectiveValue)
-                                  .add(value.mul(toBN(75)).div(toBN(100)))
+          effectiveValue: toBN(signals[data.edgewareAddr]
+                                  .effectiveValue)
+                                  .add(value)
                                   .toString(),
-          immediateEffectiveValue: toBN(signals[data.edgewareAddr]
-                                    .immediateEffectiveValue)
-                                    .add(value.mul(toBN(25)).div(toBN(100)))
-                                    .toString(),
         };
       } else {
         signals[data.edgewareAddr] = {
           signalAmt: toBN(balances[index]).toString(),
-          delayedEffectiveValue: value.mul(toBN(75)).div(toBN(100)).toString(),
-          immediateEffectiveValue: value.mul(toBN(25)).div(toBN(100)).toString(),
+          effectiveValue: value.toString(),
         };
       }
     }
@@ -240,6 +236,7 @@ const selectEdgewareValidators = (validatingLocks, totalAllocation, totalEffecti
 const getEdgewareBalanceObjects = (locks, signals, totalAllocation, totalEffectiveETH, existentialBalance=100000000000000) => {
   let balances = [];
   let vesting = [];
+  let existBalAllocation = mulByAllocationFraction(toBN(existentialBalance), totalAllocation, totalEffectiveETH).toString()
   // handle locks separately than signals at first, then we'll scan over all
   // entries and ensure that there are only unique entries in the collections.
   for (var key in locks) {
@@ -262,7 +259,7 @@ const getEdgewareBalanceObjects = (locks, signals, totalAllocation, totalEffecti
         // add entry in for controller account with minimal existential balance
         balances.push([
           keys[1].slice(2),
-          mulByAllocationFraction(toBN(existentialBalance), totalAllocation, totalEffectiveETH).toString(),
+          existBalAllocation,
         ])
       } catch(e) {
         console.log(e);
@@ -292,18 +289,16 @@ const getEdgewareBalanceObjects = (locks, signals, totalAllocation, totalEffecti
       const encoded = keyring.encodeAddress(keys[0]);
       // if key did not lock, then we need to create balances and vesting records
       // create balances record
-      const totalAmount = toBN(signals[key].immediateEffectiveValue).add(toBN(signals[key].delayedEffectiveValue));
       balances.push([
         keys[0].slice(2),
-        mulByAllocationFraction(totalAmount, totalAllocation, totalEffectiveETH).toString(),
+        mulByAllocationFraction(toBN(signals[key].effectiveValue), totalAllocation, totalEffectiveETH).toString(),
       ]);
       // create vesting record
       vesting.push([
         keys[0].slice(2),
-        // 5256000 for mainnet launch
-        52560,
-        0,
-        toBN(signals[key].immediateEffectiveValue).toString(),
+        5256000,
+        1,
+        mulByAllocationFraction(toBN(signals[key].effectiveValue).mul(toBN(75)).div(toBN(100)), totalAllocation, totalEffectiveETH).toString(),
       ]);
     } catch(e) {
       console.log(e);
@@ -315,15 +310,7 @@ const getEdgewareBalanceObjects = (locks, signals, totalAllocation, totalEffecti
 };
 
 const combineToUnique = (balances, vesting) => {
-  let balancesMap = {
-    // "1": ,
-    // "2": ,
-    // "3": ,
-    // "4": ,
-    // "5": ,
-    // "6": ,
-    // "7": ,
-  };
+  let balancesMap = {};
   let vestingMap = {};
   balances.forEach(entry => {
     let account = entry[0];
@@ -360,8 +347,7 @@ const combineToUnique = (balances, vesting) => {
   Object.keys(vestingMap).forEach(key => {
     newVesting.push([
       key,
-      // 5256000 for mainnet launch
-      52560,
+      5256000,
       0,
       vestingMap[key],
     ]);
