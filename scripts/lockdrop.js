@@ -53,15 +53,33 @@ async function getLockdropAllocation(lockdropContractAddresses, remoteUrl=LOCALH
   const contracts = lockdropContractAddresses.map(addr => {
     return new web3.eth.Contract(LOCKDROP_JSON.abi, addr)
   });
-  const { locks, validatingLocks, totalETHLocked, totalEffectiveETHLocked } = await ldHelpers.calculateEffectiveLocks(contracts);
+  // get lock data
+  const {
+    locks,
+    validatingLocks,
+    totalETHLocked,
+    totalEffectiveETHLocked
+  } = await ldHelpers.calculateEffectiveLocks(contracts);
+  // write lock data to file
   fs.writeFileSync('artifacts/lockData.json', JSON.stringify({ locks, validatingLocks, totalETHLocked, totalEffectiveETHLocked }, null, 4))
-  const { signals, totalETHSignaled, totalEffectiveETHSignaled } = await ldHelpers.calculateEffectiveSignals(web3, contracts);
+  // get signal data
+  const {
+    signals,
+    generalizedLocks,
+    totalETHSignaled,
+    totalEffectiveETHSignaled
+  } = await ldHelpers.calculateEffectiveSignals(web3, contracts);
+  // write signal data to file
   fs.writeFileSync('artifacts/signalData.json', JSON.stringify({ signals, totalETHSignaled, totalEffectiveETHSignaled }, null, 4));
+  // calculate total effective ETH for allocation computation
   const totalEffectiveETH = totalEffectiveETHLocked.add(totalEffectiveETHSignaled);
   console.log(totalEffectiveETH.toString(), totalETHLocked.toString(), totalETHSignaled.toString());
-  let json = await ldHelpers.getEdgewareBalanceObjects(locks, signals, totalAllocation, totalEffectiveETH);
+  // create JSON file for allocation
+  let json = await ldHelpers.getEdgewareBalanceObjects(locks, signals, generalizedLocks, totalAllocation, totalEffectiveETH);
+  // combine all entries to unique entries
   let { balances, vesting } = await ldHelpers.combineToUnique(json.balances, json.vesting);
-  let validators = ldHelpers.selectEdgewareValidators(validatingLocks, totalAllocation, totalEffectiveETH, 75)
+  // get validators in decreasing stake
+  let validators = ldHelpers.selectEdgewareValidators(validatingLocks, totalAllocation, totalEffectiveETH)
   return { balances, vesting, validators };
 };
 
