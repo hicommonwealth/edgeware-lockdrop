@@ -302,7 +302,7 @@ if (program.signal || program.lock) {
 if (program.allocation) {
   (async function() {
     const json = await getLockdropAllocation(program.lockdropContractAddresses, program.remoteUrl);
-    fs.writeFileSync('spec.json', JSON.stringify(json, null, 4));
+    fs.writeFileSync('genesis.json', JSON.stringify(json, null, 4));
     process.exit(0);
   })();
 }
