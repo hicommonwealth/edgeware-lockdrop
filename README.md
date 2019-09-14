@@ -4,6 +4,8 @@ This repo contains the smart contracts and scripts for the Edgeware lockdrop.
 
 The lockdrop contract enables users to _lock_ ETH for 3, 6, or 12 months or _signal_ a balance. Users also specify a 32-byte Edgeware public key, and a boolean for whether they would like to be a validator upon network launch (in which case, they must submit 3 public keys).
 
+Use node v11.6.0
+
 ## Usage
 ```
 yarn global add truffle
@@ -26,7 +28,7 @@ ETH_PRIVATE_KEY=<ETHEREUM_PRIVATE_KEY_HEX>
 INFURA_PATH=https://ropsten.infura.io/v3/<INFURA_API_KEY>
 
 # Lockdrop config
-LOCKDROP_CONTRACT_ADDRESS=<LOCKDROP_ADDRESS>
+LOCKDROP_CONTRACT_ADDRESSES=<LOCKDROP_ADDRESS>,<LOCKDROP_ADDRESS>
 
 # Edgeware config
 EDGEWARE_PUBLIC_KEY=0xa469e40f0a073be5b28e2df6e746ce6519260cdd764bc5f6b3fb3aac5cda3c35
