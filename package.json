@@ -1,4 +1,7 @@
 {
+  "engines" : {
+    "node" : "11.6.0"
+  },
   "dependencies": {
     "@polkadot/keyring": "^1.0.1",
     "bluebird": "^3.5.3",
