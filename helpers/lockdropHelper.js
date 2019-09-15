@@ -17,10 +17,10 @@ function getEffectiveValue(ethAmount, term, lockTime, lockStart, totalETH) {
     return toBN(ethAmount).mul(toBN(100).add(additiveBonus)).div(toBN(100));
   } else if (term == '1') {
     // six month term yields 30% bonus
-    return toBN(ethAmount).mul(toBN(130).add(additiveBonus)).div(toBN(100));
+    return toBN(ethAmount).mul(toBN(130)).div(toBN(100)).mul(toBN(100).add(additiveBonus)).div(toBN(100));
   } else if (term == '2') {
     // twelve month term yields 120% bonus
-    return toBN(ethAmount).mul(toBN(220).add(additiveBonus)).div(toBN(100));
+    return toBN(ethAmount).mul(toBN(220)).div(toBN(100)).mul(toBN(100).add(additiveBonus)).div(toBN(100));
   } else if (term == 'signaling') {
     // 80% deduction
     return toBN(ethAmount).mul(toBN(20)).div(toBN(100));
