@@ -118,7 +118,7 @@ const calculateEffectiveLocks = async (lockdropContracts) => {
       };
     } else {
       locks[data.edgewareAddr] = {
-        lockAmt: toBN(data.eth).toString(), 
+        lockAmt: toBN(data.eth).toString(),
         effectiveValue: value.toString(),
         lockAddrs: [data.lockAddr],
       };
@@ -176,7 +176,7 @@ const calculateEffectiveSignals = async (web3, lockdropContracts, blockNumber=84
       let value;
       // Treat generalized locks as 3 month locks
       if (generalizedLocks.lockedContractAddresses.includes(data.contractAddr)) {
-        console.log(balances[index], data.contractAddr);
+        console.log('Generalized lock:', balances[index], data.contractAddr);
         value = getEffectiveValue(balances[index], '0')
         if (data.edgewareAddr in gLocks) {
           gLocks[data.edgewareAddr] = toBN(gLocks[data.edgewareAddr]).add(value).toString();
@@ -259,7 +259,7 @@ const getEdgewareBalanceObjects = (locks, signals, generalizedLocks, totalAlloca
       keys = key.slice(2).match(/.{1,64}/g).map(key => `0x${key}`);
       // remove existential balance from this lock for controller account
       if (toBN(locks[key].effectiveValue).lte(toBN(existentialBalance))) {
-        console.log(locks[key], key, keys)
+        console.log('Warning! Validating lock with not enough balance for controller account:', locks[key], key, keys)
       }
       // ensure encodings work
       try {
@@ -277,7 +277,7 @@ const getEdgewareBalanceObjects = (locks, signals, generalizedLocks, totalAlloca
         ])
       } catch(e) {
         console.log(e);
-        console.log(`Error on locks: ${keys[0]} or ${keys[1]}`);
+        console.log(`Error processing lock event: ${keys[0]} or ${keys[1]} (${locks[key].effectiveValue})`);
       }
     } else {
       try {
@@ -288,7 +288,7 @@ const getEdgewareBalanceObjects = (locks, signals, generalizedLocks, totalAlloca
         ]);
       } catch(e) {
         console.log(e);
-        console.log(`Error on locks: ${key}`);
+        console.log(`Error processing lock event: ${key} (${locks[key].effectiveValue})`);
       }
     }
   }
@@ -340,7 +340,7 @@ const getEdgewareBalanceObjects = (locks, signals, generalizedLocks, totalAlloca
       }
     } catch(e) {
       console.log(e);
-      console.log(`Error on signals: ${key}`);
+      console.log(`Error processing signal event: ${key} (${signals[key].effectiveValue})`);
     }
   }
 
@@ -390,8 +390,10 @@ const combineToUnique = (balances, vesting) => {
       vestingMap[key],
     ]);
   });
-  console.log(`Total: ${total.toString()}`);
-  return { balances: newBalances, vesting: newVesting };
+  console.log(`Balances: ${balances.length}`);
+  console.log(`Balances with vesting: ${vesting.length}`);
+  console.log(`EDG Total: ${total.toString()}`);
+  return { balances: newBalances, vesting: newVesting, total: total };
 }
 
 const mulByAllocationFraction = (amount, totalAllocation, totalEffectiveETH) => {
