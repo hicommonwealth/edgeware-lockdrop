@@ -6,21 +6,22 @@ const schedule = require('./schedule');
 const generalizedLocks = require('./generalizedLocks');
 
 function getEffectiveValue(ethAmount, term, lockTime, lockStart, totalETH) {
-  let additiveBonus = toBN(0);
+  // multiplicative bonus starts at 100 / 100 = 1
+  let bonus = toBN(100);
   // get additive bonus if calculating allocation of locks
   if (lockTime && lockStart) {
-    additiveBonus = schedule.getAdditiveBonus(lockTime, lockStart, totalETH);
+    bonus = schedule.getBonus(lockTime, lockStart, totalETH);
   }
 
   if (term == '0') {
     // three month term yields no bonus
-    return toBN(ethAmount).mul(toBN(100).add(additiveBonus)).div(toBN(100));
+    return toBN(ethAmount).mul(toBN(100).mul(bonus)).div(toBN(10000));
   } else if (term == '1') {
     // six month term yields 30% bonus
-    return toBN(ethAmount).mul(toBN(130).add(additiveBonus)).div(toBN(100));
+    return toBN(ethAmount).mul(toBN(130).mul(bonus)).div(toBN(10000));
   } else if (term == '2') {
     // twelve month term yields 120% bonus
-    return toBN(ethAmount).mul(toBN(220).add(additiveBonus)).div(toBN(100));
+    return toBN(ethAmount).mul(toBN(220).mul(bonus)).div(toBN(10000));
   } else if (term == 'signaling') {
     // 80% deduction
     return toBN(ethAmount).mul(toBN(20)).div(toBN(100));
@@ -258,7 +259,7 @@ const getEdgewareBalanceObjects = (locks, signals, generalizedLocks, totalAlloca
       keys = key.slice(2).match(/.{1,64}/g).map(key => `0x${key}`);
       // remove existential balance from this lock for controller account
       if (toBN(locks[key].effectiveValue).lte(toBN(existentialBalance))) {
-        console.log(key, keys)
+        console.log(locks[key], key, keys)
       }
       // ensure encodings work
       try {

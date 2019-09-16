@@ -8,13 +8,13 @@ const JULY_31ST_UTC = 1564531200;
 const AUG_15TH_UTC = 1565827200;
 const AUG_30TH_UTC = 1567123200;
 
-const BONUS_50 = toBN(50);
-const BONUS_40 = toBN(40);
-const BONUS_30 = toBN(30);
-const BONUS_20 = toBN(20);
-const BONUS_10 = toBN(10);
+const BONUS_50 = toBN(150);
+const BONUS_40 = toBN(140);
+const BONUS_30 = toBN(130);
+const BONUS_20 = toBN(120);
+const BONUS_10 = toBN(110);
 
-const getAdditiveBonus = (lockTime, lockStart, currentTotalETH) => {
+const getBonus = (lockTime, lockStart, currentTotalETH) => {
   if (!toBN(lockStart).eq(toBN(JUNE_1ST_UTC))) {
     return getFixtureAdditiveBonus(lockTime, lockStart);
   } else {
@@ -29,9 +29,9 @@ const getAdditiveBonus = (lockTime, lockStart, currentTotalETH) => {
     } else if (toBN(lockTime).lte(toBN(AUG_15TH_UTC))) {
       return conditionalSwap(BONUS_10, currentTotalETH);
     } else if (toBN(lockTime).lte(toBN(AUG_30TH_UTC))) {
-      return toBN(0);
+      return toBN(100);
     } else {
-      return toBN(0);
+      return toBN(100);
     }
   }
 }
@@ -96,5 +96,5 @@ const getFixtureAdditiveBonus = (lockTime, lockStart) => {
 }
 
 module.exports = {
-  getAdditiveBonus,
+  getBonus,
 }
