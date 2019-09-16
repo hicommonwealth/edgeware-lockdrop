@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 require('dotenv').config();
 const program = require('commander');
 const Web3 = require('web3');
@@ -7,6 +8,9 @@ const EthereumTx = require('ethereumjs-tx')
 const bs58 = require('bs58');
 const fs = require('fs');
 const ldHelpers = require("../helpers/lockdropHelper.js");
+
+const EDG_DECIMALS = 18;
+const EDG_PER_BN = toBN(Math.pow(10, EDG_DECIMALS));
 
 program
   .version('0.1.0')
@@ -73,13 +77,22 @@ async function getLockdropAllocation(lockdropContractAddresses, remoteUrl=LOCALH
   fs.writeFileSync('artifacts/signalData.json', JSON.stringify({ signals, totalETHSignaled, totalEffectiveETHSignaled }, null, 4));
   // calculate total effective ETH for allocation computation
   const totalEffectiveETH = totalEffectiveETHLocked.add(totalEffectiveETHSignaled);
-  console.log(totalEffectiveETH.toString(), totalETHLocked.toString(), totalETHSignaled.toString());
+  console.log(`Total effective ETH: ${totalEffectiveETH.div(EDG_PER_BN).toString()}`);
+  console.log(`Total ETH locked: ${totalETHLocked.div(EDG_PER_BN).toString()}`);
+  console.log(`Total ETH signaled: ${totalETHSignaled.div(EDG_PER_BN).toString()}`);
+
   // create JSON file for allocation
   let json = await ldHelpers.getEdgewareBalanceObjects(locks, signals, generalizedLocks, totalAllocation, totalEffectiveETH);
   // combine all entries to unique entries
-  let { balances, vesting } = await ldHelpers.combineToUnique(json.balances, json.vesting);
+  let { balances, vesting, total } = await ldHelpers.combineToUnique(json.balances, json.vesting);
   // get validators in decreasing stake
   let validators = ldHelpers.selectEdgewareValidators(validatingLocks, totalAllocation, totalEffectiveETH)
+
+  try {
+    console.log(`EDG per effective ETH: ${total.div(totalEffectiveETH).toNumber()}`);
+  } catch (e) {
+    console.log(e);
+  }
   return { balances, vesting, validators };
 };
 
