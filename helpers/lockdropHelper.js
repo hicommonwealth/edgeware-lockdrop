@@ -10,7 +10,7 @@ function getEffectiveValue(ethAmount, term, lockTime, lockStart, totalETH) {
   let bonus = toBN(100);
   // get additive bonus if calculating allocation of locks
   if (lockTime && lockStart) {
-    bonus = schedule.getBonus(lockTime, lockStart, totalETH);
+    bonus = schedule.getEarlyParticipationBonus(lockTime, lockStart);
   }
 
   if (term == '0') {
