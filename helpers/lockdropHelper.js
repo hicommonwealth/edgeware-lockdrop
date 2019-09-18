@@ -277,7 +277,7 @@ const getEdgewareBalanceObjects = (locks, signals, generalizedLocks, totalAlloca
         ])
       } catch(e) {
         console.log(e);
-        console.log(`Error on locks: ${keys[0]} or ${keys[1]}`);
+        console.log(`Error processing lock event: ${keys[0]} or ${keys[1]} (${locks[key].effectiveValue})`);
       }
     } else {
       try {
@@ -288,7 +288,7 @@ const getEdgewareBalanceObjects = (locks, signals, generalizedLocks, totalAlloca
         ]);
       } catch(e) {
         console.log(e);
-        console.log(`Error on locks: ${key}`);
+        console.log(`Error processing lock event: ${key} (${locks[key].effectiveValue})`);
       }
     }
   }
@@ -340,7 +340,7 @@ const getEdgewareBalanceObjects = (locks, signals, generalizedLocks, totalAlloca
       }
     } catch(e) {
       console.log(e);
-      console.log(`Error on signals: ${key}`);
+      console.log(`Error processing signal event: ${key} (${signals[key].effectiveValue})`);
     }
   }
 

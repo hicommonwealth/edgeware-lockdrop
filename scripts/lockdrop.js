@@ -77,9 +77,11 @@ async function getLockdropAllocation(lockdropContractAddresses, remoteUrl=LOCALH
   fs.writeFileSync('artifacts/signalData.json', JSON.stringify({ signals, totalETHSignaled, totalEffectiveETHSignaled }, null, 4));
   // calculate total effective ETH for allocation computation
   const totalEffectiveETH = totalEffectiveETHLocked.add(totalEffectiveETHSignaled);
-  console.log(`Total effective ETH: ${totalEffectiveETH.div(EDG_PER_BN).toString()}`);
-  console.log(`Total ETH locked: ${totalETHLocked.div(EDG_PER_BN).toString()}`);
-  console.log(`Total ETH signaled: ${totalETHSignaled.div(EDG_PER_BN).toString()}`);
+  console.log(`Total effective ETH: ${totalEffectiveETH.div(EDG_PER_BN)}`);
+  console.log(`Total effective ETH locked: ${totalEffectiveETHLocked.div(EDG_PER_BN)}`);
+  console.log(`Total effective ETH signaled: ${totalEffectiveETHSignaled.div(EDG_PER_BN)}`);
+  console.log(`Total ETH locked: ${totalETHLocked.div(EDG_PER_BN)}`);
+  console.log(`Total ETH signaled: ${totalETHSignaled.div(EDG_PER_BN)}`);
 
   // create JSON file for allocation
   let json = await ldHelpers.getEdgewareBalanceObjects(locks, signals, generalizedLocks, totalAllocation, totalEffectiveETH);
