@@ -15,8 +15,8 @@ program
 
 // Inspect the balance allocated to a <public_key>.
 //
-// Requires a valid `genesis.json` to be present in the root directory
-// of this repository. If the genesis file is missing, follow the
+// Requires a valid `lockdrop_allocations.json` to be present in the
+// root directory of this repository. If it is missing, follow the
 // instructions for running `scripts/lockdrop.js` in the README.
 
 if (!program.args || program.args.length !== 1) {

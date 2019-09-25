@@ -22,11 +22,11 @@ program
   .option('-r, --remoteUrl <url>', 'The remote URL of an Ethereum node (defaults to localhost:8545)')
   .option('--unlockAll', 'Unlock all locks from the locally stored Ethereum address')
   .option('--lockdropContractAddress <addr>', 'The Ethereum address for the target Lockdrop (THIS IS A LOCKDROP CONTRACT)')
-  .option('--allocation', 'Get the allocation for the current set of lockers')
+  .option('--allocation', 'Create lockdrop_allocations.json, with allocations for the current set of lockers')
   .option('--ending', 'Get the remaining time of the lockdrop')
-  .option('--lockLength <length>', 'The desired lock length - (3, 6, or 12)')
+  .option('--lockLength <length>', 'The desired lock length (3, 6, or 12)')
   .option('--lockValue <value>', 'The amount of Ether to lock')
-  .option('--edgewarePublicKey <publicKey>', 'Edgeware Public Key')
+  .option('--edgewarePublicKey <publicKey>', 'Edgeware public key')
   .option('--isValidator', 'A boolean flag indicating intent to be a validator')
   .option('--locksForAddress <userAddress>', 'Returns the history of lock contracts for a participant in the lockdrop')
   .option('--getNonce', 'Get nonce of lockdrop contract')
@@ -317,7 +317,7 @@ if (program.signal || program.lock) {
 if (program.allocation) {
   (async function() {
     const json = await getLockdropAllocation(program.lockdropContractAddresses, program.remoteUrl);
-    fs.writeFileSync('genesis.json', JSON.stringify(json, null, 4));
+    fs.writeFileSync('lockdrop_allocations.json', JSON.stringify(json, null, 4));
     process.exit(0);
   })();
 }
