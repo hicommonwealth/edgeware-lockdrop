@@ -8,7 +8,7 @@ const generalizedLocks = require('./generalizedLocks');
 function getEffectiveValue(ethAmount, term, lockTime, lockStart, totalETH) {
   // multiplicative bonus starts at 100 / 100 = 1
   let bonus = toBN(100);
-  // get additive bonus if calculating allocation of locks
+  // get multiplicative bonus if calculating allocation of locks
   if (lockTime && lockStart) {
     bonus = schedule.getEarlyParticipationBonus(lockTime, lockStart);
   }
