@@ -9,7 +9,7 @@
   dependencies:
     regenerator-runtime "^0.13.2"
 
-"@polkadot/keyring@^1.0.1":
+"@polkadot/keyring@1.0.1":
   version "1.0.1"
   resolved "https://registry.yarnpkg.com/@polkadot/keyring/-/keyring-1.0.1.tgz#64a9a7da08fdffc76fe39512e4fe9a37175b9e3c"
   integrity sha512-RsqwJ3Y90ckAbvvfgFPzkz4FBS/XL9YqQSmM9j4zOeK/O7yxu9BlIdwmvNdhR5y8WZ5+mSaIu+6o0z8WJ/GRBQ==
@@ -279,15 +279,15 @@ block-stream@*:
   dependencies:
     inherits "~2.0.0"
 
+bluebird@3.5.3, bluebird@^3.5.0:
+  version "3.5.3"
+  resolved "https://registry.yarnpkg.com/bluebird/-/bluebird-3.5.3.tgz#7d01c6f9616c9a51ab0f8c549a79dfe6ec33efa7"
+  integrity sha512-/qKPUQlaW1OyR51WeCPBvRnAlnZFUJkCSG5HzGnuIqhgyJtF+T94lFnn33eiazjRm2LAHVy2guNnaq48X9SJuw==
+
 bluebird@^2.9.34:
   version "2.11.0"
   resolved "https://registry.yarnpkg.com/bluebird/-/bluebird-2.11.0.tgz#534b9033c022c9579c56ba3b3e5a5caafbb650e1"
   integrity sha1-U0uQM8AiyVecVro7Plpcqvu2UOE=
-
-bluebird@^3.5.0, bluebird@^3.5.3:
-  version "3.5.3"
-  resolved "https://registry.yarnpkg.com/bluebird/-/bluebird-3.5.3.tgz#7d01c6f9616c9a51ab0f8c549a79dfe6ec33efa7"
-  integrity sha512-/qKPUQlaW1OyR51WeCPBvRnAlnZFUJkCSG5HzGnuIqhgyJtF+T94lFnn33eiazjRm2LAHVy2guNnaq48X9SJuw==
 
 bn.js@4.11.6:
   version "4.11.6"
@@ -388,7 +388,7 @@ browserify-sign@^4.0.0:
     inherits "^2.0.1"
     parse-asn1 "^5.0.0"
 
-bs58@^4.0.1:
+bs58@4.0.1, bs58@^4.0.1:
   version "4.0.1"
   resolved "https://registry.yarnpkg.com/bs58/-/bs58-4.0.1.tgz#be161e76c354f6f788ae4071f63f34e8c4f0a42a"
   integrity sha1-vhYedsNU9veIrkBx9j806MTwpCo=
@@ -720,7 +720,7 @@ dom-walk@^0.1.0:
   resolved "https://registry.yarnpkg.com/dom-walk/-/dom-walk-0.1.1.tgz#672226dc74c8f799ad35307df936aba11acd6018"
   integrity sha1-ZyIm3HTI95mtNTB9+TaroRrNYBg=
 
-dotenv@^6.2.0:
+dotenv@6.2.0:
   version "6.2.0"
   resolved "https://registry.yarnpkg.com/dotenv/-/dotenv-6.2.0.tgz#941c0410535d942c8becf28d3f357dbd9d476064"
   integrity sha512-HygQCKUBSFl8wKQZBSemMywRWcEDNidvNbjGVyZu3nbZ8qq9ubiPoGLMdRDpfSrpkkm9BXYFkpKxxFX38o/76w==
@@ -850,7 +850,7 @@ ethereum-common@^0.0.18:
   resolved "https://registry.yarnpkg.com/ethereum-common/-/ethereum-common-0.0.18.tgz#2fdc3576f232903358976eb39da783213ff9523f"
   integrity sha1-L9w1dvIykDNYl26znaeDIT/5Uj8=
 
-ethereumjs-tx@^1.3.7:
+ethereumjs-tx@1.3.7:
   version "1.3.7"
   resolved "https://registry.yarnpkg.com/ethereumjs-tx/-/ethereumjs-tx-1.3.7.tgz#88323a2d875b10549b8347e09f4862b546f3d89a"
   integrity sha512-wvLMxzt1RPhAQ9Yi3/HKZTn0FZYpnsmQdbKYfUUpi4j1SEIcbkd9tndVjcPrufY3V7j2IebOpC00Zp2P/Ay2kA==
@@ -1400,20 +1400,20 @@ jsprim@^1.2.2:
     json-schema "0.2.3"
     verror "1.10.0"
 
-keccak@^1.0.2:
-  version "1.4.0"
-  resolved "https://registry.yarnpkg.com/keccak/-/keccak-1.4.0.tgz#572f8a6dbee8e7b3aa421550f9e6408ca2186f80"
-  integrity sha512-eZVaCpblK5formjPjeTBik7TAg+pqnDrMHIffSvi9Lh7PQgM1+hSzakUeZFCk9DVVG0dacZJuaz2ntwlzZUIBw==
+keccak@2.0.0:
+  version "2.0.0"
+  resolved "https://registry.yarnpkg.com/keccak/-/keccak-2.0.0.tgz#7456ea5023284271e6f362b4397e8df4d2bb994c"
+  integrity sha512-rKe/lRr0KGhjoz97cwg+oeT1Rj/Y4cjae6glArioUC8JBF9ROGZctwIaaruM7d7naovME4Q8WcQSO908A8qcyQ==
   dependencies:
     bindings "^1.2.1"
     inherits "^2.0.3"
     nan "^2.2.1"
     safe-buffer "^5.1.0"
 
-keccak@^2.0.0:
-  version "2.0.0"
-  resolved "https://registry.yarnpkg.com/keccak/-/keccak-2.0.0.tgz#7456ea5023284271e6f362b4397e8df4d2bb994c"
-  integrity sha512-rKe/lRr0KGhjoz97cwg+oeT1Rj/Y4cjae6glArioUC8JBF9ROGZctwIaaruM7d7naovME4Q8WcQSO908A8qcyQ==
+keccak@^1.0.2:
+  version "1.4.0"
+  resolved "https://registry.yarnpkg.com/keccak/-/keccak-1.4.0.tgz#572f8a6dbee8e7b3aa421550f9e6408ca2186f80"
+  integrity sha512-eZVaCpblK5formjPjeTBik7TAg+pqnDrMHIffSvi9Lh7PQgM1+hSzakUeZFCk9DVVG0dacZJuaz2ntwlzZUIBw==
   dependencies:
     bindings "^1.2.1"
     inherits "^2.0.3"
@@ -1635,7 +1635,7 @@ once@^1.3.0, once@^1.3.1, once@^1.4.0:
   dependencies:
     wrappy "1"
 
-openzeppelin-solidity@^2.1.2:
+openzeppelin-solidity@2.1.2:
   version "2.1.2"
   resolved "https://registry.yarnpkg.com/openzeppelin-solidity/-/openzeppelin-solidity-2.1.2.tgz#94e2bb92b60e91abb22c6fe27d983d92850fb324"
   integrity sha512-1ggh+AZFpMAgGfgnVMQ8dwYawjD2QN4xuWkQS4FUbeUz1fnCKJpguUl2cyadyfDYjBq1XJ6MA6VkzYpTZtJMqw==
@@ -1898,7 +1898,7 @@ ripemd160@^2.0.0, ripemd160@^2.0.1:
     hash-base "^3.0.0"
     inherits "^2.0.1"
 
-rlp@^2.0.0, rlp@^2.2.2:
+rlp@2.2.2, rlp@^2.0.0:
   version "2.2.2"
   resolved "https://registry.yarnpkg.com/rlp/-/rlp-2.2.2.tgz#e6677b83cca9105371d930e01d8ffc1263139d05"
   integrity sha512-Ng2kJEN731Sfv4ZAY2i0ytPMc0BbJKBsVNl0QZY8LxOWSwd+1xpg+fpSRfaMn0heHU447s6Kgy8qfHZR0XTyVw==
@@ -2214,7 +2214,7 @@ trim@0.0.1:
   resolved "https://registry.yarnpkg.com/trim/-/trim-0.0.1.tgz#5858547f6b290757ee95cccc666fb50084c460dd"
   integrity sha1-WFhUf2spB1fulczMZm+1AITEYN0=
 
-truffle-hdwallet-provider@^1.0.8:
+truffle-hdwallet-provider@1.0.8:
   version "1.0.8"
   resolved "https://registry.yarnpkg.com/truffle-hdwallet-provider/-/truffle-hdwallet-provider-1.0.8.tgz#76ab28e08b4c84dc8b3c98c9c2b4bba9c9d834e0"
   integrity sha512-kG/WSEvwWSRuFbyEnoNgGQtKrKJMr/MwKoZfiPeT6L6d2gS2QnH2xbJbWxV+LtENjERSodjI9bbO/TN73CXWSQ==
@@ -2563,7 +2563,7 @@ web3-utils@1.0.0-beta.37:
     underscore "1.8.3"
     utf8 "2.1.1"
 
-web3@1.0.0-beta.37, web3@^1.0.0-beta.37:
+web3@1.0.0-beta.37:
   version "1.0.0-beta.37"
   resolved "https://registry.yarnpkg.com/web3/-/web3-1.0.0-beta.37.tgz#b42c30e67195f816cd19d048fda872f70eca7083"
   integrity sha512-8XLgUspdzicC/xHG82TLrcF/Fxzj2XYNJ1KTYnepOI77bj5rvpsxxwHYBWQ6/JOjk0HkZqoBfnXWgcIHCDhZhQ==

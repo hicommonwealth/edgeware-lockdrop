@@ -73,7 +73,6 @@ const calculateEffectiveLocks = async (lockdropContracts) => {
       fromBlock: 0,
       toBlock: 'latest',
     });
-
     lockEvents = [ ...lockEvents, ...events ];
   }
 
@@ -84,23 +83,29 @@ const calculateEffectiveLocks = async (lockdropContracts) => {
   } else {
     lockdropStartTime = (await lockdropContracts[0].methods.LOCK_START_TIME().call());
   }
-
+  console.log(`Lock events ${lockEvents.length}`);
   lockEvents.forEach((event) => {
     const data = event.returnValues;
+    // allocate locks to first key if multiple submitted or malformed larger key submitted
+    // NOTE: if key was less than length of a correct submission (66 chars), funds are considered lost
+    let keys = [data.edgewareAddr];
+    if (data.edgewareAddr.length >= 66) {
+      keys = data.edgewareAddr.slice(2).match(/.{1,64}/g).map(key => `0x${key}`);
+    }
     let value = getEffectiveValue(data.eth, data.term, data.time, lockdropStartTime, totalETHLocked);
     totalETHLocked = totalETHLocked.add(toBN(data.eth));
     totalEffectiveETHLocked = totalEffectiveETHLocked.add(value);
 
     // Add all validators to a separate collection to do validator election over later
     if (data.isValidator) {
-      if (data.edgewareAddr in validatingLocks) {
-        validatingLocks[data.edgewareAddr] = {
-          lockAmt: toBN(data.eth).add(toBN(validatingLocks[data.edgewareAddr].lockAmt)).toString(),
-          effectiveValue: toBN(validatingLocks[data.edgewareAddr].effectiveValue).add(value).toString(),
-          lockAddrs: [data.lockAddr, ...validatingLocks[data.edgewareAddr].lockAddrs],
+      if (keys[0] in validatingLocks) {
+        validatingLocks[keys[0]] = {
+          lockAmt: toBN(data.eth).add(toBN(validatingLocks[keys[0]].lockAmt)).toString(),
+          effectiveValue: toBN(validatingLocks[keys[0]].effectiveValue).add(value).toString(),
+          lockAddrs: [data.lockAddr, ...validatingLocks[keys[0]].lockAddrs],
         };
       } else {
-        validatingLocks[data.edgewareAddr] = {
+        validatingLocks[keys[0]] = {
           lockAmt: toBN(data.eth).toString(),
           effectiveValue: value.toString(),
           lockAddrs: [data.lockAddr],
@@ -110,14 +115,14 @@ const calculateEffectiveLocks = async (lockdropContracts) => {
 
 
     // Add all locks to collection, calculating/updating effective value of lock
-    if (data.edgewareAddr in locks) {
-      locks[data.edgewareAddr] = {
-        lockAmt: toBN(data.eth).add(toBN(locks[data.edgewareAddr].lockAmt)).toString(),
-        effectiveValue: toBN(locks[data.edgewareAddr].effectiveValue).add(value).toString(),
-        lockAddrs: [data.lockAddr, ...locks[data.edgewareAddr].lockAddrs],
+    if (keys[0] in locks) {
+      locks[keys[0]] = {
+        lockAmt: toBN(data.eth).add(toBN(locks[keys[0]].lockAmt)).toString(),
+        effectiveValue: toBN(locks[keys[0]].effectiveValue).add(value).toString(),
+        lockAddrs: [data.lockAddr, ...locks[keys[0]].lockAddrs],
       };
     } else {
-      locks[data.edgewareAddr] = {
+      locks[keys[0]] = {
         lockAmt: toBN(data.eth).toString(),
         effectiveValue: value.toString(),
         lockAddrs: [data.lockAddr],
@@ -142,7 +147,8 @@ const calculateEffectiveSignals = async (web3, lockdropContracts, blockNumber=84
 
     signalEvents = [ ...signalEvents, ...events ];
   }
-
+  console.log(`Signal events ${signalEvents.length}`);
+  const caughtEvents = [];
   const promises = signalEvents.map(async (event) => {
     const data = event.returnValues;
     // Get balance at block that lockdrop ends
@@ -155,13 +161,13 @@ const calculateEffectiveSignals = async (web3, lockdropContracts, blockNumber=84
           balance = await web3.eth.getBalance(data.contractAddr);
         }
       } catch(e) {
-        console.log(`${balance} Couldn't find: ${JSON.stringify(data)}`);
-        await Promise.delay(5000);
+        console.log(`Couldn't find: ${JSON.stringify(data, null, 4)}`);
       }
     }
 
     return balance;
   });
+
   // Resolve promises to ensure all inner async functions have finished
   let balances = await Promise.all(promises);
   let gLocks = {};
@@ -174,33 +180,43 @@ const calculateEffectiveSignals = async (web3, lockdropContracts, blockNumber=84
       seenContracts[data.contractAddr] = true;
       // Get value for each signal event and add it to the collection
       let value;
+      // allocate signals to first key if multiple submitted or malformed larger key submitted
+      // NOTE: if key was less than length of a correct submission (66 chars), funds are considered lost
+      let keys = [data.edgewareAddr];
+      if (data.edgewareAddr.length >= 66) {
+        keys = data.edgewareAddr.slice(2).match(/.{1,64}/g).map(key => `0x${key}`);
+      }
+
       // Treat generalized locks as 3 month locks
       if (generalizedLocks.lockedContractAddresses.includes(data.contractAddr)) {
         console.log('Generalized lock:', balances[index], data.contractAddr);
         value = getEffectiveValue(balances[index], '0')
-        if (data.edgewareAddr in gLocks) {
-          gLocks[data.edgewareAddr] = toBN(gLocks[data.edgewareAddr]).add(value).toString();
+        if (keys[0] in gLocks) {
+          gLocks[keys[0]] = toBN(gLocks[keys[0]]).add(value).toString();
         } else {
-          gLocks[data.edgewareAddr] = value.toString();
+          gLocks[keys[0]] = value.toString();
         }
+        totalETHSignaled = totalETHSignaled.add(toBN(balances[index]));
+        totalEffectiveETHSignaled = totalEffectiveETHSignaled.add(value);
+        // keep generalized locks collection separate from other signals
+        return;
       } else {
         value = getEffectiveValue(balances[index], 'signaling');
       }
       // Add value to total signaled ETH
-
       totalETHSignaled = totalETHSignaled.add(toBN(balances[index]));
       totalEffectiveETHSignaled = totalEffectiveETHSignaled.add(value);
       // Iterate over signals, partition reward into delayed and immediate amounts
-      if (data.edgewareAddr in signals) {
-        signals[data.edgewareAddr] = {
-          signalAmt: toBN(balances[index]).add(toBN(signals[data.edgewareAddr].signalAmt)).toString(),
-          effectiveValue: toBN(signals[data.edgewareAddr]
+      if (keys[0] in signals) {
+        signals[keys[0]] = {
+          signalAmt: toBN(balances[index]).add(toBN(signals[keys[0]].signalAmt)).toString(),
+          effectiveValue: toBN(signals[keys[0]]
                                   .effectiveValue)
                                   .add(value)
                                   .toString(),
         };
       } else {
-        signals[data.edgewareAddr] = {
+        signals[keys[0]] = {
           signalAmt: toBN(balances[index]).toString(),
           effectiveValue: value.toString(),
         };
@@ -208,7 +224,7 @@ const calculateEffectiveSignals = async (web3, lockdropContracts, blockNumber=84
     }
   });
   // Return signals and total ETH signaled
-  return { signals, totalETHSignaled, totalEffectiveETHSignaled, generalizedLocks: gLocks }
+  return { signals, totalETHSignaled, totalEffectiveETHSignaled, genLocks: gLocks }
 }
 
 const getLockStorage = async (web3, lockAddress) => {
@@ -247,100 +263,70 @@ const selectEdgewareValidators = (validatingLocks, totalAllocation, totalEffecti
     });
 };
 
-const getEdgewareBalanceObjects = (locks, signals, generalizedLocks, totalAllocation, totalEffectiveETH, existentialBalance=100000000000000) => {
+const getEdgewareBalanceObjects = (locks, signals, genLocks, totalAllocation, totalEffectiveETH, existentialBalance=100000000000000) => {
   let balances = [];
   let vesting = [];
-  let existBalAllocation = mulByAllocationFraction(toBN(existentialBalance), totalAllocation, totalEffectiveETH).toString()
   // handle locks separately than signals at first, then we'll scan over all
   // entries and ensure that there are only unique entries in the collections.
   for (var key in locks) {
-    let keys;
-    if (key.length === 194) {
-      keys = key.slice(2).match(/.{1,64}/g).map(key => `0x${key}`);
-      // remove existential balance from this lock for controller account
-      if (toBN(locks[key].effectiveValue).lte(toBN(existentialBalance))) {
-        console.log('Warning! Validating lock with not enough balance for controller account:', locks[key], key, keys)
-      }
-      // ensure encodings work
-      try {
-        const encoded1 = keyring.encodeAddress(keys[0]);
-        const encoded2 = keyring.encodeAddress(keys[1]);
-        // add entry in for stash account
-        balances.push([
-          keys[0].slice(2),
-          mulByAllocationFraction(toBN(locks[key].effectiveValue).sub(toBN(existentialBalance)), totalAllocation, totalEffectiveETH).toString(),
-        ]);
-        // add entry in for controller account with minimal existential balance
-        balances.push([
-          keys[1].slice(2),
-          existBalAllocation,
-        ])
-      } catch(e) {
-        console.log(e);
-        console.log(`Error processing lock event: ${keys[0]} or ${keys[1]} (${locks[key].effectiveValue})`);
-      }
-    } else {
-      try {
-        const encoded = keyring.encodeAddress(key);
-        balances.push([
-          key.slice(2),
-          mulByAllocationFraction(locks[key].effectiveValue, totalAllocation, totalEffectiveETH).toString(),
-        ]);
-      } catch(e) {
-        console.log(e);
-        console.log(`Error processing lock event: ${key} (${locks[key].effectiveValue})`);
-      }
+    try {
+      const encoded = keyring.encodeAddress(key);
+      balances.push([
+        key.slice(2),
+        mulByAllocationFraction(locks[key].effectiveValue, totalAllocation, totalEffectiveETH).toString(),
+      ]);
+      // add the vesting account to make their entire balance liquid at launch
+      vesting.push([
+        key.slice(2),
+        5256000,
+        1,
+        mulByAllocationFraction(toBN(locks[key].effectiveValue), totalAllocation, totalEffectiveETH).toString(),
+      ]);
+    } catch(e) {
+      console.log(e);
+      console.log(`Error processing lock event: ${key} (${locks[key].effectiveValue})`);
     }
   }
   // handle signal entries
   for (var key in signals) {
     try {
-      let keys = [key];
-      // allocate signals to first key if multiple submitted
-      if (key.length === 194) {
-        keys = key.slice(2).match(/.{1,64}/g).map(key => `0x${key}`);
-      }
-      const encoded = keyring.encodeAddress(keys[0]);
-
-      if (keys[0] in generalizedLocks) {
-        const gValue = generalizedLocks[keys[0]];
-        const leftoverValue = toBN(signals[key].effectiveValue).sub(toBN(gValue));
-        // add 25% of non-generalised signal value to the liquid amount for the vesting collection
-        const vestingValue = toBN(gValue).add(leftoverValue.mul(toBN(25)).div(toBN(100)))
-        // create new balance record for the signaler
-        balances.push([
-          keys[0].slice(2),
-          mulByAllocationFraction(toBN(signals[key].effectiveValue), totalAllocation, totalEffectiveETH).toString(),
-        ]);
-        if (leftoverValue.gt(toBN(0))) {
-          // create vesting record
-          vesting.push([
-            keys[0].slice(2),
-            5256000,
-            1,
-            mulByAllocationFraction(vestingValue, totalAllocation, totalEffectiveETH).toString(),
-          ]);
-        }
-      } else {
-        // the liquid amount of the vesting is 25% of signaled value
-        const vestingValue = toBN(signals[key].effectiveValue).mul(toBN(25)).div(toBN(100));
-        // create new balance record for the signaler
-        balances.push([
-          keys[0].slice(2),
-          mulByAllocationFraction(toBN(signals[key].effectiveValue), totalAllocation, totalEffectiveETH).toString(),
-        ]);
-
-        // create vesting record
-        vesting.push([
-          keys[0].slice(2),
-          5256000,
-          1,
-          mulByAllocationFraction(vestingValue, totalAllocation, totalEffectiveETH).toString(),
-        ]);
-      }
+      // the liquid amount of the vesting is 25% of signaled value
+      const vestingValue = toBN(signals[key].effectiveValue).mul(toBN(25)).div(toBN(100));
+      // create new balance record for the signaler
+      balances.push([
+        key.slice(2),
+        mulByAllocationFraction(toBN(signals[key].effectiveValue), totalAllocation, totalEffectiveETH).toString(),
+      ]);
+      // create vesting record for 25% liquid signal amount at launch
+      vesting.push([
+        key.slice(2),
+        5256000,
+        1,
+        mulByAllocationFraction(vestingValue, totalAllocation, totalEffectiveETH).toString(),
+      ]);
     } catch(e) {
       console.log(e);
       console.log(`Error processing signal event: ${key} (${signals[key].effectiveValue})`);
+    }
+  }
+
+  for (var key in genLocks) {
+    try {
+      const encoded = keyring.encodeAddress(key);
+      balances.push([
+        key.slice(2),
+        mulByAllocationFraction(toBN(genLocks[key]), totalAllocation, totalEffectiveETH).toString(),
+      ]);
+      // add the vesting account to make their entire balance liquid at launch
+      vesting.push([
+        key.slice(2),
+        5256000,
+        1,
+        mulByAllocationFraction(toBN(genLocks[key]), totalAllocation, totalEffectiveETH).toString(),
+      ]);
+    } catch(e) {
+      console.log(e);
+      console.log(`Error processing lock event: ${key} (${genLocks[key]})`);
     }
   }
 
@@ -364,10 +350,16 @@ const combineToUnique = (balances, vesting) => {
   vesting.forEach(entry => {
     let account = entry[0];
     let amount = entry[3];
-    if (account in vestingMap) {
-      vestingMap[account] = toBN(vestingMap[account]).add(toBN(amount)).toString();
-    } else {
-      vestingMap[account] = amount
+    try {
+      if (account in vestingMap) {
+        vestingMap[account] = toBN(vestingMap[account]).add(toBN(amount)).toString();
+      } else {
+        vestingMap[account] = amount
+      }
+    } catch (e) {
+      console.log(e);
+      console.log(entry);
+      console.log(vestingMap[account]);
     }
   });
 
@@ -383,12 +375,16 @@ const combineToUnique = (balances, vesting) => {
   });
 
   Object.keys(vestingMap).forEach(key => {
-    newVesting.push([
-      key,
-      5256000,
-      1,
-      vestingMap[key],
-    ]);
+    if (toBN(balancesMap[key]).eq(toBN(vestingMap[key]))) {
+      // pass
+    } else {
+      newVesting.push([
+        key,
+        5256000,
+        1,
+        vestingMap[key],
+      ]);
+    }
   });
   console.log(`Balances: ${balances.length}`);
   console.log(`Balances with vesting: ${vesting.length}`);

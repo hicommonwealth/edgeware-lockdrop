@@ -53,6 +53,7 @@ async function getCurrentTimestamp(remoteUrl=LOCALHOST_URL) {
 async function getLockdropAllocation(lockdropContractAddresses, remoteUrl=LOCALHOST_URL, totalAllocation='4500000000000000000000000000') {
   console.log('Fetching Lockdrop locked locks...');
   console.log("");
+  console.log(remoteUrl);
   const web3 = getWeb3(remoteUrl);
   const contracts = lockdropContractAddresses.map(addr => {
     return new web3.eth.Contract(LOCKDROP_JSON.abi, addr)
@@ -69,7 +70,7 @@ async function getLockdropAllocation(lockdropContractAddresses, remoteUrl=LOCALH
   // get signal data
   const {
     signals,
-    generalizedLocks,
+    genLocks,
     totalETHSignaled,
     totalEffectiveETHSignaled
   } = await ldHelpers.calculateEffectiveSignals(web3, contracts);
@@ -84,7 +85,7 @@ async function getLockdropAllocation(lockdropContractAddresses, remoteUrl=LOCALH
   console.log(`Total ETH signaled: ${totalETHSignaled.div(EDG_PER_BN)}`);
 
   // create JSON file for allocation
-  let json = await ldHelpers.getEdgewareBalanceObjects(locks, signals, generalizedLocks, totalAllocation, totalEffectiveETH);
+  let json = await ldHelpers.getEdgewareBalanceObjects(locks, signals, genLocks, totalAllocation, totalEffectiveETH);
   // combine all entries to unique entries
   let { balances, vesting, total } = await ldHelpers.combineToUnique(json.balances, json.vesting);
   // get validators in decreasing stake
