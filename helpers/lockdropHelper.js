@@ -148,7 +148,6 @@ const calculateEffectiveSignals = async (web3, lockdropContracts, blockNumber=84
     signalEvents = [ ...signalEvents, ...events ];
   }
   console.log(`Signal events ${signalEvents.length}`);
-  const caughtEvents = [];
   const promises = signalEvents.map(async (event) => {
     const data = event.returnValues;
     // Get balance at block that lockdrop ends
