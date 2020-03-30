@@ -72,8 +72,8 @@ contract('Lockdrop-1', (accounts) => {
     });
 
     const afterafter = await utility.getBalance(accounts[1], web3);
-    assert.ok(balBefore > balAfter);
-    assert.ok(afterafter > balAfter);
+    assert(Number(balBefore) > Number(balAfter));
+    assert(Number(afterafter) > Number(balAfter));
   });
 
   it('should not allow one to lock before the lock start time', async function () {
